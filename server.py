@@ -86,12 +86,12 @@ def upload_file():
         print(f'Upload error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-# 스레드 풀 생성
-executor = ThreadPoolExecutor(max_workers=8)
+# 스레드 풀 크기 줄이기
+executor = ThreadPoolExecutor(max_workers=4)
 
-# 캐시 크기 조정
-slide_cache = TTLCache(maxsize=5, ttl=3600)  # 슬라이드 캐시 크기 줄임
-tile_cache = TTLCache(maxsize=500, ttl=1800)  # 타일 캐시 크기 조정
+# 캐시 크기 최적화
+slide_cache = TTLCache(maxsize=3, ttl=3600)
+tile_cache = TTLCache(maxsize=200, ttl=1800)
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -108,7 +108,6 @@ def get_slide(slide_path):
         slide_cache[slide_path] = openslide.OpenSlide(slide_path)
     return slide_cache[slide_path]
 
-# 타일 생성 함수 최적화
 def create_tile(slide, level, x, y, tile_size):
     try:
         cache_key = f"{slide.filename}_{level}_{x}_{y}"
@@ -122,17 +121,23 @@ def create_tile(slide, level, x, y, tile_size):
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
         
-        # 타일 읽기 및 변환
+        # 메모리 사용량 최적화
         tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
         tile = tile.convert('RGB')
-        
-        # 메모리 최적화
         tile.load()
         
-        # 캐시에 저장
-        tile_cache[cache_key] = tile.copy()
+        # 이미지 크기 최적화 (필요한 경우)
+        if tile.size[0] > tile_size or tile.size[1] > tile_size:
+            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
         
-        return tile
+        # 메모리 사용량 줄이기
+        tile_copy = tile.copy()
+        tile.close()
+        
+        # 캐시에 저장
+        tile_cache[cache_key] = tile_copy
+        
+        return tile_copy
     except Exception as e:
         print(f"Error creating tile: {str(e)}")
         return None
@@ -145,7 +150,7 @@ def get_tile(filename, level, x, y):
         # 슬라이드 객체 가져오기
         if slide_path not in slide_cache:
             slide = openslide.OpenSlide(slide_path)
-            slide.filename = filename  # 캐시 키를 위해 파일명 저장
+            slide.filename = filename
             slide_cache[slide_path] = slide
         slide = slide_cache[slide_path]
         
@@ -156,7 +161,7 @@ def get_tile(filename, level, x, y):
             
         # 응답 생성
         output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=80, optimize=True)
+        tile.save(output, format='JPEG', quality=75, optimize=True)
         output.seek(0)
         
         response = make_response(send_file(
