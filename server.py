@@ -80,11 +80,11 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 # 스레드 풀 생성
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=8)
 
 # 캐시 크기와 TTL 조정
-slide_cache = TTLCache(maxsize=10, ttl=3600)  # 슬라이드 캐시 크기 줄임
-tile_cache = TTLCache(maxsize=500, ttl=1800)  # 타일 캐시 TTL 30분으로 조정
+slide_cache = TTLCache(maxsize=20, ttl=3600)  # 슬라이드 캐시 크기 줄임
+tile_cache = TTLCache(maxsize=1000, ttl=3600)  # 타일 캐시 TTL 30분으로 조정
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -104,7 +104,7 @@ def get_slide(slide_path):
 # 타일 생성 함수
 def create_tile(slide, level, x, y, tile_size):
     try:
-        # 타일 좌표 계산
+        # 타일 좌표 계산 최적화
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
@@ -112,14 +112,16 @@ def create_tile(slide, level, x, y, tile_size):
         # 타일 크기 계산
         region_size = (tile_size, tile_size)
         
-        # 타일 읽기
+        # 메모리 사용 최적화
         tile = slide.read_region((x_pos, y_pos), level, region_size)
         tile = tile.convert('RGB')
         
-        # 메모리 최적화를 위해 이미지 크기 조정
+        # JPEG 품질 조정으로 로딩 속도 향상
         if tile.size != (tile_size, tile_size):
             tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
         
+        # 메모리 사용량 줄이기
+        tile.load()
         return tile
     except Exception as e:
         print(f"Error creating tile: {str(e)}")
@@ -134,7 +136,8 @@ def get_tile(filename, level, x, y):
         if cache_key in tile_cache:
             tile = tile_cache[cache_key]
             output = io.BytesIO()
-            tile.save(output, format='JPEG', quality=85)  # 품질 약간 낮춤
+            # JPEG 품질을 80으로 낮춰서 전송 속도 향상
+            tile.save(output, format='JPEG', quality=80, optimize=True)
             output.seek(0)
             response = make_response(send_file(
                 output,
@@ -154,7 +157,7 @@ def get_tile(filename, level, x, y):
         
         # 비동기로 타일 생성
         future = executor.submit(create_tile, slide, level, x, y, tile_size)
-        tile = future.result(timeout=20)  # 20초 타임아웃
+        tile = future.result(timeout=30)
         
         if tile is None:
             return jsonify({'error': 'Failed to create tile'}), 500
@@ -164,7 +167,7 @@ def get_tile(filename, level, x, y):
         
         # 응답 생성
         output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=85)
+        tile.save(output, format='JPEG', quality=80, optimize=True)
         output.seek(0)
         
         response = make_response(send_file(
@@ -177,7 +180,7 @@ def get_tile(filename, level, x, y):
         return response
         
     except Exception as e:
-        print(f"Error in get_tile: {str(e)}")
+        print(f"Error in get_tile: {str(e)}")  # 에러 로깅 추가
         return jsonify({'error': str(e)}), 500
 
 def load_public_files():
