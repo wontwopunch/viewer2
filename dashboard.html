@@ -350,12 +350,15 @@
 
         let files = [];
         
+        // localhost:5000을 실제 서버 IP로 변경
+        const API_BASE_URL = 'http://188.166.255.196:5000';
+
         // 파일 목록 표시 함수
         function displayFiles() {
             const tbody = document.getElementById('fileList');
             tbody.innerHTML = '';
 
-            fetch('http://localhost:5000/files')
+            fetch(`${API_BASE_URL}/files`)  // URL 수정
                 .then(response => response.json())
                 .then(files => {
                     files.forEach(file => {
@@ -418,7 +421,7 @@
         function renameFile(filename) {
             const newName = prompt('새 파일명을 입력하세요:', filename);
             if (newName && newName !== filename) {
-                fetch(`http://localhost:5000/files/${filename}/rename`, {
+                fetch(`${API_BASE_URL}/files/${filename}/rename`, {  // URL 수정
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -449,7 +452,7 @@
 
         // 공개/비공개 토글 함수 수정
         function togglePublic(filename) {
-            fetch(`http://localhost:5000/files/${filename}/toggle-public`, {
+            fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, {  // URL 수정
                 method: 'POST'
             })
             .then(response => response.json())
@@ -471,7 +474,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
-                fetch('http://localhost:5000/upload', {
+                fetch(`${API_BASE_URL}/upload`, {  // URL 수정
                     method: 'POST',
                     body: formData
                 })
@@ -548,7 +551,7 @@
             try {
                 // 파일명 변경이 필요한 경우
                 if (newFileName !== currentEditingFile.name) {
-                    const renameResponse = await fetch(`/files/${currentEditingFile.name}/rename`, {
+                    const renameResponse = await fetch(`${API_BASE_URL}/files/${currentEditingFile.name}/rename`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -563,7 +566,7 @@
 
                 // 공개 상태 변경이 필요한 경우
                 if (newPublicStatus !== currentEditingFile.isPublic) {
-                    const toggleResponse = await fetch(`/files/${newFileName}/toggle-public`, {
+                    const toggleResponse = await fetch(`${API_BASE_URL}/files/${newFileName}/toggle-public`, {
                         method: 'POST'
                     });
                     
@@ -585,7 +588,7 @@
         // 파일 삭제 함수 추가
         function deleteFile(filename) {
             if (confirm(`${filename}을(를) 삭제하시겠습니까?`)) {
-                fetch(`http://localhost:5000/files/${filename}`, {
+                fetch(`${API_BASE_URL}/files/${filename}`, {  // URL 수정
                     method: 'DELETE'
                 })
                 .then(response => response.json())
