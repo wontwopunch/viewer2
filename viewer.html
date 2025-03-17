@@ -273,6 +273,15 @@
     </div>
 
     <script>
+        // URL에서 파일명 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const filename = urlParams.get('file');
+        
+        if (!filename) {
+            alert('파일명이 지정되지 않았습니다.');
+            window.location.href = '/';
+        }
+
         // API 기본 URL 설정
         const API_BASE_URL = 'http://188.166.255.196:5000';
 
@@ -318,14 +327,14 @@
                 'Cache-Control': 'public, max-age=3600'
             },
             tileSources: {
-                type: 'legacy-image-pyramid',
-                levels: [{
-                    url: `/slide/${filename}/tile/0`,
-                    width: info.dimensions[0],
-                    height: info.dimensions[1],
-                    tileWidth: 1024,   // 타일 크기 줄임
-                    tileHeight: 1024   // 타일 크기 줄임
-                }]
+                height: info.dimensions[1],
+                width: info.dimensions[0],
+                tileSize: 1024,
+                minLevel: 0,
+                maxLevel: info.level_count - 1,
+                getTileUrl: function(level, x, y) {
+                    return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                }
             }
         });
 
@@ -339,7 +348,7 @@
 
         // 데이터 로드 함수 수정
         function loadData() {
-            return fetch(`${API_BASE_URL}/slide/${fileName}/data`)
+            return fetch(`${API_BASE_URL}/slide/${filename}/data`)
                 .then(response => response.json())
                 .then(data => {
                     memos = data.memos || [];
@@ -355,7 +364,7 @@
 
         // 데이터 저장 함수 수정
         function saveData() {
-            return fetch(`${API_BASE_URL}/slide/${fileName}/data`, {
+            return fetch(`${API_BASE_URL}/slide/${filename}/data`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -365,40 +374,30 @@
             .catch(error => console.error('Error saving data:', error));
         }
 
-        // 초기화 코드
-        const urlParams = new URLSearchParams(window.location.search);
-        const fileName = urlParams.get('file');
-
-        if (fileName) {
-            document.getElementById('fileName').textContent = fileName;
+        // 슬라이드 정보를 가져온 후 뷰어 초기화
+        getSlideInfo(filename).then(info => {
+            console.log('Slide info received:', info);
             
-            // 슬라이드 정보를 가져온 후 타일 소스 설정
-            getSlideInfo(fileName)
-                .then(data => {
-                    console.log('Slide info received:', data);
-                    
-                    const tileSource = {
-                        width: data.dimensions[0],
-                        height: data.dimensions[1],
-                        tileSize: data.tile_size,
-                        minLevel: 0,
-                        maxLevel: data.level_count - 1,
-                        getTileUrl: function(level, x, y) {
-                            return `${API_BASE_URL}/slide/${fileName}/tile/${level}/${x}/${y}`;
-                        },
-                        getLevelScale: function(level) {
-                            return 1 / data.level_downsamples[level];
-                        }
-                    };
+            const tileSource = {
+                width: info.dimensions[0],
+                height: info.dimensions[1],
+                tileSize: info.tile_size,
+                minLevel: 0,
+                maxLevel: info.level_count - 1,
+                getTileUrl: function(level, x, y) {
+                    return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                },
+                getLevelScale: function(level) {
+                    return 1 / info.level_downsamples[level];
+                }
+            };
 
-                    console.log('Opening viewer with tileSource:', tileSource);
-                    viewer.open(tileSource);
-                })
-                .catch(error => {
-                    console.error('Error loading slide info:', error);
-                    document.getElementById('loadingText').textContent = '슬라이드 로딩 중 오류가 발생했습니다.';
-                });
-        }
+            console.log('Opening viewer with tileSource:', tileSource);
+            viewer.open(tileSource);
+        }).catch(error => {
+            console.error('Error loading slide info:', error);
+            document.getElementById('loadingText').textContent = '슬라이드 로딩 중 오류가 발생했습니다.';
+        });
 
         // 메모와 어노테이션 데이터
         let memos = [];
