@@ -11,6 +11,7 @@ import PIL.ImageDraw
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,18 @@ CORS(app, resources={
         "allow_headers": ["Content-Type"]
     }
 })
+
+# 미들웨어 설정
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# 허용되지 않은 경로 차단
+@app.before_request
+def block_sensitive_paths():
+    blocked_paths = ['.env', '.git', 'admin', 'configuration', 'settings']
+    path = request.path.lstrip('/')
+    for blocked in blocked_paths:
+        if path.startswith(blocked):
+            return "Not Found", 404
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
