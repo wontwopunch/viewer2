@@ -6,7 +6,7 @@
     <title>SVS 파일 뷰어</title>
     <!-- OpenSeadragon 메인 라이브러리 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
-    <!-- OpenSeadragon SVG Overlay 플러그인 (로컬) -->
+    <!-- OpenSeadragon SVG Overlay 플러그인 -->
     <script src="openseadragon-svg-overlay.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     <style>
@@ -285,7 +285,7 @@
         // OpenSeadragon 뷰어 초기화
         const viewer = OpenSeadragon({
             id: "viewer",
-            prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+            prefixUrl: "images/",
             showNavigator: true,
             navigatorPosition: "BOTTOM_RIGHT",
             navigatorHeight: "150px",
@@ -298,12 +298,12 @@
             visibilityRatio: 0.5,      // 미리 로딩
             minZoomImageRatio: 0.8,    // 최소 줌 비율
             maxZoomPixelRatio: 2,      // 최대 줌 비율
-            immediateRender: false,     // 렌더링 최적화
+            immediateRender: true,     // 즉시 렌더링
             preserveViewport: true,     // 뷰포트 유지
             
             // 타일 설정
-            maxImageCacheCount: 200,    // 캐시 크기 제한
-            timeout: 60000,            // 타임아웃 60초
+            maxImageCacheCount: 500,   // 이미지 캐시 크기 증가
+            timeout: 60000,            // 타임아웃 60초로 증가
             
             // 로딩 설정
             placeholderFillStyle: "#000",
@@ -316,6 +316,16 @@
             
             ajaxHeaders: {
                 'Cache-Control': 'public, max-age=3600'
+            },
+            tileSources: {
+                type: 'legacy-image-pyramid',
+                levels: [{
+                    url: `/slide/${filename}/tile/0`,
+                    width: info.dimensions[0],
+                    height: info.dimensions[1],
+                    tileWidth: 1024,   // 타일 크기 줄임
+                    tileHeight: 1024   // 타일 크기 줄임
+                }]
             }
         });
 

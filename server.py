@@ -12,7 +12,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
 CORS(app, resources={
     r"/*": {
         "origins": "*",
@@ -59,10 +59,14 @@ def serve_file(filename):
             return "File not found or not public", 404
         return send_file('viewer.html')
     
-    # static 파일 처리
+    # 정적 파일 처리
     try:
-        return send_from_directory(STATIC_FOLDER, filename)
-    except:
+        # 먼저 static 폴더에서 찾기
+        if os.path.exists(os.path.join(STATIC_FOLDER, filename)):
+            return send_from_directory(STATIC_FOLDER, filename)
+        return "File not found", 404
+    except Exception as e:
+        print(f"Error serving static file: {str(e)}")
         return "File not found", 404
 
 @app.route('/upload', methods=['POST'])
@@ -86,12 +90,10 @@ def upload_file():
         print(f'Upload error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-# 스레드 풀 크기 줄이기
-executor = ThreadPoolExecutor(max_workers=4)
-
-# 캐시 크기 최적화
-slide_cache = TTLCache(maxsize=3, ttl=3600)
-tile_cache = TTLCache(maxsize=200, ttl=1800)
+# 스레드 풀 크기와 캐시 설정 조정
+executor = ThreadPoolExecutor(max_workers=8)  # 다시 8로 증가
+slide_cache = TTLCache(maxsize=5, ttl=7200)  # TTL 2시간으로 증가
+tile_cache = TTLCache(maxsize=1000, ttl=3600)  # 캐시 크기 증가
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -110,14 +112,14 @@ def get_slide(slide_path):
 
 def create_tile(slide, level, x, y, tile_size, filename):
     try:
-        # 캐시 키에 filename 직접 사용
         cache_key = f"{filename}_{level}_{x}_{y}"
         
-        # 캐시 확인
         if cache_key in tile_cache:
             return tile_cache[cache_key]
-            
-        # 타일 좌표 계산
+        
+        # 타일 크기 최적화
+        tile_size = min(tile_size, 1024)  # 타일 크기 줄임
+        
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
@@ -127,18 +129,14 @@ def create_tile(slide, level, x, y, tile_size, filename):
         tile = tile.convert('RGB')
         tile.load()
         
-        # 이미지 크기 최적화 (필요한 경우)
-        if tile.size[0] > tile_size or tile.size[1] > tile_size:
-            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
-        
-        # 메모리 사용량 줄이기
+        # 이미지 압축 품질 조정
         tile_copy = tile.copy()
         tile.close()
         
         # 캐시에 저장
         tile_cache[cache_key] = tile_copy
-        
         return tile_copy
+        
     except Exception as e:
         print(f"Error creating tile: {str(e)}")
         return None
@@ -148,20 +146,19 @@ def get_tile(filename, level, x, y):
     try:
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
         
-        # 슬라이드 객체 가져오기
         if slide_path not in slide_cache:
             slide = openslide.OpenSlide(slide_path)
             slide_cache[slide_path] = slide
         slide = slide_cache[slide_path]
         
-        # 타일 생성 (filename 전달)
-        tile = create_tile(slide, level, x, y, 2048, filename)
+        # 타일 크기 줄임
+        tile = create_tile(slide, level, x, y, 1024, filename)
         if tile is None:
             return jsonify({'error': 'Failed to create tile'}), 500
-            
-        # 응답 생성
+        
         output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=75, optimize=True)
+        # JPEG 품질 더 낮춤
+        tile.save(output, format='JPEG', quality=70, optimize=True)
         output.seek(0)
         
         response = make_response(send_file(
@@ -169,7 +166,7 @@ def get_tile(filename, level, x, y):
             mimetype='image/jpeg',
             as_attachment=False
         ))
-        response.headers['Cache-Control'] = 'public, max-age=3600'
+        response.headers['Cache-Control'] = 'public, max-age=7200'  # 캐시 시간 증가
         return response
         
     except Exception as e:
