@@ -12,6 +12,14 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
+# 먼저 경로 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+DATA_FOLDER = os.path.join(BASE_DIR, 'data')
+STATIC_FOLDER = BASE_DIR  # 여기서 정의
+PUBLIC_FILES_PATH = os.path.join(BASE_DIR, 'public_files.json')
+
+# 그 다음 Flask 앱 초기화
 app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
 CORS(app, resources={
     r"/*": {
@@ -20,12 +28,6 @@ CORS(app, resources={
         "allow_headers": ["Content-Type"]
     }
 })
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-DATA_FOLDER = os.path.join(BASE_DIR, 'data')
-STATIC_FOLDER = BASE_DIR
-PUBLIC_FILES_PATH = os.path.join(BASE_DIR, 'public_files.json')
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
