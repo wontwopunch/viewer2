@@ -108,9 +108,10 @@ def get_slide(slide_path):
         slide_cache[slide_path] = openslide.OpenSlide(slide_path)
     return slide_cache[slide_path]
 
-def create_tile(slide, level, x, y, tile_size):
+def create_tile(slide, level, x, y, tile_size, filename):
     try:
-        cache_key = f"{slide.filename}_{level}_{x}_{y}"
+        # 캐시 키에 filename 직접 사용
+        cache_key = f"{filename}_{level}_{x}_{y}"
         
         # 캐시 확인
         if cache_key in tile_cache:
@@ -150,12 +151,11 @@ def get_tile(filename, level, x, y):
         # 슬라이드 객체 가져오기
         if slide_path not in slide_cache:
             slide = openslide.OpenSlide(slide_path)
-            slide.filename = filename
             slide_cache[slide_path] = slide
         slide = slide_cache[slide_path]
         
-        # 타일 생성
-        tile = create_tile(slide, level, x, y, 2048)
+        # 타일 생성 (filename 전달)
+        tile = create_tile(slide, level, x, y, 2048, filename)
         if tile is None:
             return jsonify({'error': 'Failed to create tile'}), 500
             
