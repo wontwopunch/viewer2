@@ -353,6 +353,9 @@ def serve_public_file(filename):
         print(f"Error serving public file: {str(e)}")
         return str(e), 500
 
+# 타일 크기 상수 정의
+TILE_SIZE = 1024
+
 @app.route('/slide/<filename>/info')
 def get_slide_info(filename):
     try:
@@ -362,14 +365,12 @@ def get_slide_info(filename):
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
-        tile_size = 2048
-        
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
             'level_dimensions': slide.level_dimensions,
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': tile_size,
+            'tile_size': TILE_SIZE,  # 일관된 타일 크기 사용
             'properties': dict(slide.properties)
         }
         
