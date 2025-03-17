@@ -308,7 +308,7 @@
                 showRotationControl: true,
                 
                 // 성능 최적화 설정
-                imageLoaderLimit: 3,
+                imageLoaderLimit: 10,        // 동시 로딩 제한 증가
                 pixelsPerWheelLine: 40,
                 visibilityRatio: 0.5,
                 minZoomImageRatio: 0.8,
@@ -317,8 +317,13 @@
                 preserveViewport: true,
                 
                 // 타일 설정
-                maxImageCacheCount: 500,
-                timeout: 60000,
+                maxImageCacheCount: 1000,    // 캐시 크기 증가
+                timeout: 60000,              // 타임아웃 증가
+                
+                // 로딩 설정
+                placeholderFillStyle: "#000",
+                blendTime: 0,
+                alwaysBlend: false,
                 
                 // 타일 소스 설정
                 tileSources: {

@@ -105,10 +105,15 @@ def upload_file():
         print(f'Upload error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-# 스레드 풀 크기와 캐시 설정 조정
-executor = ThreadPoolExecutor(max_workers=8)  # 다시 8로 증가
-slide_cache = TTLCache(maxsize=5, ttl=7200)  # TTL 2시간으로 증가
-tile_cache = TTLCache(maxsize=1000, ttl=3600)  # 캐시 크기 증가
+# 타일 크기와 품질 상수 정의
+TILE_SIZE = 1024
+JPEG_QUALITY = 60  # 품질 더 낮춤
+MAX_WORKERS = 16   # 워커 수 증가
+
+# 스레드 풀과 캐시 설정 조정
+executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
+slide_cache = TTLCache(maxsize=5, ttl=7200)
+tile_cache = TTLCache(maxsize=2000, ttl=3600)  # 캐시 크기 증가
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -132,19 +137,23 @@ def create_tile(slide, level, x, y, tile_size, filename):
         if cache_key in tile_cache:
             return tile_cache[cache_key]
         
-        # 타일 크기 최적화
-        tile_size = min(tile_size, 1024)  # 타일 크기 줄임
+        # 타일 크기 고정
+        tile_size = TILE_SIZE
         
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
         
-        # 메모리 사용량 최적화
+        # 메모리 최적화
         tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
         tile = tile.convert('RGB')
         tile.load()
         
-        # 이미지 압축 품질 조정
+        # 이미지 크기가 크면 리사이즈
+        if tile.size[0] > TILE_SIZE or tile.size[1] > TILE_SIZE:
+            tile = tile.resize((TILE_SIZE, TILE_SIZE), PIL.Image.Resampling.LANCZOS)
+        
+        # 메모리 해제
         tile_copy = tile.copy()
         tile.close()
         
@@ -166,14 +175,13 @@ def get_tile(filename, level, x, y):
             slide_cache[slide_path] = slide
         slide = slide_cache[slide_path]
         
-        # 타일 크기 줄임
-        tile = create_tile(slide, level, x, y, 1024, filename)
+        tile = create_tile(slide, level, x, y, TILE_SIZE, filename)
         if tile is None:
             return jsonify({'error': 'Failed to create tile'}), 500
         
         output = io.BytesIO()
         # JPEG 품질 더 낮춤
-        tile.save(output, format='JPEG', quality=70, optimize=True)
+        tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
         output.seek(0)
         
         response = make_response(send_file(
@@ -181,7 +189,7 @@ def get_tile(filename, level, x, y):
             mimetype='image/jpeg',
             as_attachment=False
         ))
-        response.headers['Cache-Control'] = 'public, max-age=7200'  # 캐시 시간 증가
+        response.headers['Cache-Control'] = 'public, max-age=7200'
         return response
         
     except Exception as e:
@@ -352,9 +360,6 @@ def serve_public_file(filename):
     except Exception as e:
         print(f"Error serving public file: {str(e)}")
         return str(e), 500
-
-# 타일 크기 상수 정의
-TILE_SIZE = 1024
 
 @app.route('/slide/<filename>/info')
 def get_slide_info(filename):
