@@ -52,11 +52,18 @@ def index():
     return send_from_directory(STATIC_FOLDER, 'index.html')
 
 @app.route('/<path:filename>')
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    if request.path.startswith('/static/'):
-        return send_from_directory('static', filename)
-    return send_from_directory(STATIC_FOLDER, filename)
+def serve_file(filename):
+    # SVS 파일 공유 링크 처리
+    if filename.endswith('.svs'):
+        if filename not in public_files or not public_files[filename]:
+            return "File not found or not public", 404
+        return send_file('viewer.html')
+    
+    # static 파일 처리
+    try:
+        return send_from_directory(STATIC_FOLDER, filename)
+    except:
+        return "File not found", 404
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -82,9 +89,9 @@ def upload_file():
 # 스레드 풀 생성
 executor = ThreadPoolExecutor(max_workers=8)
 
-# 캐시 크기와 TTL 조정
-slide_cache = TTLCache(maxsize=20, ttl=3600)  # 슬라이드 캐시 크기 줄임
-tile_cache = TTLCache(maxsize=1000, ttl=3600)  # 타일 캐시 TTL 30분으로 조정
+# 캐시 크기 조정
+slide_cache = TTLCache(maxsize=5, ttl=3600)  # 슬라이드 캐시 크기 줄임
+tile_cache = TTLCache(maxsize=500, ttl=1800)  # 타일 캐시 크기 조정
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -101,27 +108,30 @@ def get_slide(slide_path):
         slide_cache[slide_path] = openslide.OpenSlide(slide_path)
     return slide_cache[slide_path]
 
-# 타일 생성 함수
+# 타일 생성 함수 최적화
 def create_tile(slide, level, x, y, tile_size):
     try:
-        # 타일 좌표 계산 최적화
+        cache_key = f"{slide.filename}_{level}_{x}_{y}"
+        
+        # 캐시 확인
+        if cache_key in tile_cache:
+            return tile_cache[cache_key]
+            
+        # 타일 좌표 계산
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
         
-        # 타일 크기 계산
-        region_size = (tile_size, tile_size)
-        
-        # 메모리 사용 최적화
-        tile = slide.read_region((x_pos, y_pos), level, region_size)
+        # 타일 읽기 및 변환
+        tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
         tile = tile.convert('RGB')
         
-        # JPEG 품질 조정으로 로딩 속도 향상
-        if tile.size != (tile_size, tile_size):
-            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
-        
-        # 메모리 사용량 줄이기
+        # 메모리 최적화
         tile.load()
+        
+        # 캐시에 저장
+        tile_cache[cache_key] = tile.copy()
+        
         return tile
     except Exception as e:
         print(f"Error creating tile: {str(e)}")
@@ -130,41 +140,20 @@ def create_tile(slide, level, x, y, tile_size):
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        cache_key = f"{filename}_{level}_{x}_{y}"
-        
-        # 캐시된 타일 확인
-        if cache_key in tile_cache:
-            tile = tile_cache[cache_key]
-            output = io.BytesIO()
-            # JPEG 품질을 80으로 낮춰서 전송 속도 향상
-            tile.save(output, format='JPEG', quality=80, optimize=True)
-            output.seek(0)
-            response = make_response(send_file(
-                output,
-                mimetype='image/jpeg',
-                as_attachment=False
-            ))
-            response.headers['Cache-Control'] = 'public, max-age=3600'
-            return response
-        
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        tile_size = 2048
         
         # 슬라이드 객체 가져오기
         if slide_path not in slide_cache:
-            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
+            slide = openslide.OpenSlide(slide_path)
+            slide.filename = filename  # 캐시 키를 위해 파일명 저장
+            slide_cache[slide_path] = slide
         slide = slide_cache[slide_path]
         
-        # 비동기로 타일 생성
-        future = executor.submit(create_tile, slide, level, x, y, tile_size)
-        tile = future.result(timeout=30)
-        
+        # 타일 생성
+        tile = create_tile(slide, level, x, y, 2048)
         if tile is None:
             return jsonify({'error': 'Failed to create tile'}), 500
-        
-        # 타일 캐시에 저장
-        tile_cache[cache_key] = tile.copy()
-        
+            
         # 응답 생성
         output = io.BytesIO()
         tile.save(output, format='JPEG', quality=80, optimize=True)
@@ -175,12 +164,11 @@ def get_tile(filename, level, x, y):
             mimetype='image/jpeg',
             as_attachment=False
         ))
-        
         response.headers['Cache-Control'] = 'public, max-age=3600'
         return response
         
     except Exception as e:
-        print(f"Error in get_tile: {str(e)}")  # 에러 로깅 추가
+        print(f"Error in get_tile: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 def load_public_files():
@@ -332,15 +320,17 @@ def rename_file(filename):
 def serve_public_file(filename):
     try:
         print(f"Accessing public file: {filename}")
-        print(f"Current public files: {public_files}")
         
-        if filename not in public_files:
-            return "File not found", 404
-            
-        if not public_files[filename]:
-            return "File is not public", 403
-            
-        return send_file('viewer.html')
+        # SVS 파일 처리
+        if filename.endswith('.svs'):
+            if filename not in public_files:
+                return "File not found", 404
+            if not public_files[filename]:
+                return "File is not public", 403
+            return send_file('viewer.html')
+        
+        # static 파일 처리
+        return send_from_directory(STATIC_FOLDER, filename)
         
     except Exception as e:
         print(f"Error serving public file: {str(e)}")
