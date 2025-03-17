@@ -273,376 +273,39 @@
     </div>
 
     <script>
-        // URL에서 파일명 가져오기
-        const urlParams = new URLSearchParams(window.location.search);
-        let fileName = urlParams.get('file');
+        // API 기본 URL 설정
+        const API_BASE_URL = 'http://188.166.255.196:5000';
 
-        // 공개 URL인 경우 처리
-        if (window.location.pathname.startsWith('/public/')) {
-            fileName = window.location.pathname.split('/public/')[1];
-            // 공개 모드에서는 어노테이션 도구와 대시보드 버튼만 숨김
-            document.getElementById('toolbox').style.display = 'none';
-            document.querySelector('.annotation-section').style.display = 'none';
-            document.querySelector('.header button').style.display = 'none';
-            
-            // 메모 섹션 스타일 수정
-            const memoSection = document.querySelector('.memo-section');
-            memoSection.style.width = '300px';
-            memoSection.style.position = 'fixed';
-            memoSection.style.right = '20px';
-            memoSection.style.top = '80px';
-            memoSection.style.background = 'rgba(255, 255, 255, 0.9)';
-            memoSection.style.padding = '15px';
-            memoSection.style.borderRadius = '8px';
-            memoSection.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-            memoSection.style.zIndex = '1000';
-            
-            // 메모 섹션 제목 수정
-            document.querySelector('.memo-section h3').textContent = '방명록';
-            document.getElementById('newMemo').placeholder = '방명록을 남겨주세요...';
+        // 슬라이드 정보 가져오기
+        function getSlideInfo(filename) {
+            return fetch(`${API_BASE_URL}/slide/${filename}/info`)
+                .then(response => response.json());
         }
 
-        if (!fileName) {
-            document.getElementById('loadingText').textContent = '파일을 찾을 수 없습니다';
-            document.getElementById('loadingOverlay').style.display = 'none';
-        } else {
-        document.getElementById('fileName').textContent = fileName;
-
-            // API 기본 URL 설정
-            const API_BASE_URL = 'http://188.166.255.196:5000';
-
-            // 슬라이드 정보 가져오기
-            function getSlideInfo(filename) {
-                return fetch(`${API_BASE_URL}/slide/${filename}/info`)
-                    .then(response => response.json());
+        // OpenSeadragon 뷰어 초기화
+        const viewer = OpenSeadragon({
+            id: "viewer",
+            prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+            showNavigator: true,
+            navigatorPosition: "BOTTOM_RIGHT",
+            navigatorHeight: "150px",
+            navigatorWidth: "150px",
+            showRotationControl: true,
+            gestureSettingsMouse: {
+                clickToZoom: true,
+                dblClickToZoom: true,
+                pinchToZoom: true,
+                scrollToZoom: true
+            },
+            timeout: 60000,
+            ajaxHeaders: {
+                'Cache-Control': 'public, max-age=3600'
             }
+        });
 
-            // 데이터 로드
-            function loadData() {
-                return fetch(`${API_BASE_URL}/slide/${fileName}/data`)
-                    .then(response => response.json())
-                    .catch(error => {
-                        console.error('Error:', error);
-                        return { memos: [], annotations: [] };
-                    });
-            }
-
-            // 슬라이드 정보를 가져온 후 타일 소스 설정
-            const baseUrl = window.location.pathname.startsWith('/public/') ? 
-                `/public/${fileName}` : `/slide/${fileName}`;
-
-            // Loading 관리 개선 함수
-            function showLoading(text) {
-                document.getElementById('loadingText').textContent = text || 'SVS 파일 로딩 중...';
-                document.getElementById('loadingOverlay').style.display = 'flex';
-                document.getElementById('loadingProgress').textContent = '준비 중...';
-            }
-
-            function updateLoadingProgress(progress) {
-                document.getElementById('loadingProgress').textContent = progress;
-            }
-
-            function hideLoading() {
-                // 점진적으로 페이드 아웃
-                const overlay = document.getElementById('loadingOverlay');
-                overlay.style.transition = 'opacity 0.5s ease';
-                overlay.style.opacity = '0';
-                
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    overlay.style.opacity = '1';
-                }, 500);
-            }
-
-            // 타일 로딩 진행 상황 변수
-            let loadedTiles = 0;
-            let totalTiles = 0;
-            let lastDisplayedPercent = 0;
-
-            function resetLoadingProgress() {
-                loadedTiles = 0;
-                totalTiles = 0;
-                lastDisplayedPercent = 0;
-                document.getElementById('loadingProgress').textContent = '준비 중...';
-            }
-
-            function updateLoadingProgress() {
-                if (totalTiles > 0) {
-                    const percent = Math.round((loadedTiles / totalTiles) * 100);
-                    
-                    if (percent !== lastDisplayedPercent) {
-                        document.getElementById('loadingProgress').textContent = 
-                            `${percent}% (${loadedTiles}/${totalTiles} 타일)`;
-                        lastDisplayedPercent = percent;
-                    }
-                    
-                    // 첫 번째 타일이 로드되면 충분하다고 판단
-                    if (loadedTiles >= 1) {
-                        hideLoading();
-                    }
-                }
-            }
-
-            // OpenSeadragon 뷰어 초기화
-            const viewer = OpenSeadragon({
-                id: "viewer",
-                prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
-                animationTime: 0.5,
-                blendTime: 0.1,
-                constrainDuringPan: true,
-                maxZoomPixelRatio: 2,
-                minZoomLevel: 0.1,
-                maxZoomLevel: 10,
-                visibilityRatio: 1,
-                zoomPerScroll: 1.2,
-                timeout: 60000,
-                showNavigator: true,
-                navigatorPosition: 'TOP_RIGHT',
-                navigatorHeight: 120,
-                navigatorWidth: 180,
-                immediateRender: false,
-                preserveViewport: true,
-                homeFillsViewer: true,
-                defaultZoomLevel: 1,
-                maxImageCacheCount: 200,
-                placeholderFillStyle: "#ffffff",
-                mouseNavEnabled: true,
-                gestureSettingsMouse: {
-                    clickToZoom: true,
-                    dblClickToZoom: true,
-                    pinchToZoom: true,
-                    scrollToZoom: true,
-                    dragToPan: true
-                },
-                loadTilesWithAjax: true,
-                ajaxHeaders: {
-                    'Cache-Control': 'public, max-age=3600'
-                },
-                tileSources: {
-                    getTileUrl: function(level, x, y) {
-                        return `${API_BASE_URL}/slide/${fileName}/tile/${level}/${x}/${y}`;
-                    },
-                    getLevelScale: function(level) {
-                        return 1 / data.level_downsamples[level];
-                    }
-                }
-            });
-
-            fetch(`${baseUrl}/info`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Slide info received:', data);
-                    
-                    // 타일 소스 설정
-                    const tileSource = {
-                        width: data.dimensions[0],
-                        height: data.dimensions[1],
-                        tileSize: 2048,
-                        minLevel: 0,
-                        maxLevel: data.level_count - 1,
-                        
-                        getTileUrl: function(level, x, y) {
-                            return `${baseUrl}/tile/${level}/${x}/${y}`;
-                        },
-                        
-                        getLevelScale: function(level) {
-                            return 1 / data.level_downsamples[level];
-                        }
-                    };
-
-                    console.log('Opening viewer with tileSource:', tileSource);
-                    viewer.open(tileSource);
-                });
-
-            // SVG 오버레이 변수 선언
-            let overlay;
-            let isDrawing = false;
-            let startPoint = null;
-            let currentRect = null;
-            let tempAnnotation = null;
-            
-            // 스크립트 로드 함수 정의
-            function loadScript(src) {
-                return new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = src;
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-            }
-            
-            // 공개 모드가 아닐 때만 SVG 오버레이 스크립트 로드
-            if (!window.location.pathname.startsWith('/public/')) {
-                loadScript('/openseadragon-svg-overlay.js')
-                    .then(() => {
-                        // SVG 오버레이 초기화
-                        overlay = viewer.svgOverlay();
-                        
-                        // DOM 요소 참조
-                        const moveTool = document.getElementById('moveTool');
-                        const annotationTool = document.getElementById('annotationTool');
-                        const saveAnnotationBtn = document.getElementById('saveAnnotation');
-                        
-                        if (!moveTool || !annotationTool || !saveAnnotationBtn) {
-                            console.error('Required DOM elements not found');
-                        } else {
-                            // 어노테이션 관련 이벤트 핸들러 등록
-                            viewer.addHandler('canvas-press', function(event) {
-                                if (!annotationTool.classList.contains('active-tool')) return;
-                                // 기본 동작 방지
-                                event.preventDefaultAction = true;
-                                
-                                isDrawing = true;
-                                startPoint = viewer.viewport.pointFromPixel(event.position);
-                                
-                                // 새 사각형 생성
-                                if (currentRect && currentRect.parentNode) {
-                                    currentRect.parentNode.removeChild(currentRect);
-                                }
-                                
-                                currentRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                                currentRect.setAttribute("stroke", "red");
-                                currentRect.setAttribute("stroke-width", "2");
-                                currentRect.setAttribute("fill", "rgba(255, 0, 0, 0.2)");
-                                currentRect.setAttribute("vector-effect", "non-scaling-stroke");
-                                overlay.node().appendChild(currentRect);
-                                
-                                // 초기 위치 설정
-                                currentRect.setAttribute("x", startPoint.x);
-                                currentRect.setAttribute("y", startPoint.y);
-                                currentRect.setAttribute("width", 0);
-                                currentRect.setAttribute("height", 0);
-                            });
-
-                            viewer.addHandler('canvas-drag', function(event) {
-                                if (!isDrawing || !startPoint || !currentRect) return;
-                                // 기본 동작 방지
-                                event.preventDefaultAction = true;
-                                
-                                const currentPoint = viewer.viewport.pointFromPixel(event.position);
-                                
-                                // 사각형 업데이트
-                                const x = Math.min(startPoint.x, currentPoint.x);
-                                const y = Math.min(startPoint.y, currentPoint.y);
-                                const width = Math.abs(currentPoint.x - startPoint.x);
-                                const height = Math.abs(currentPoint.y - startPoint.y);
-                                
-                                currentRect.setAttribute("x", x);
-                                currentRect.setAttribute("y", y);
-                                currentRect.setAttribute("width", width);
-                                currentRect.setAttribute("height", height);
-                                
-                                // 저장 버튼 표시
-                                saveAnnotationBtn.style.display = 'inline-block';
-                                
-                                // 임시 어노테이션 데이터 업데이트
-                                const startImgCoord = viewer.viewport.viewportToImageCoordinates(startPoint.x, startPoint.y);
-                                const endImgCoord = viewer.viewport.viewportToImageCoordinates(currentPoint.x, currentPoint.y);
-                                
-                                tempAnnotation = {
-                                    viewportCoords: {
-                                        x: x,
-                                        y: y,
-                                        width: width, 
-                                        height: height
-                                    },
-                                    imageCoords: {
-                                        x: Math.min(startImgCoord.x, endImgCoord.x),
-                                        y: Math.min(startImgCoord.y, endImgCoord.y),
-                                        width: Math.abs(endImgCoord.x - startImgCoord.x),
-                                        height: Math.abs(endImgCoord.y - startImgCoord.y)
-                                    }
-                                };
-                            });
-
-                            viewer.addHandler('canvas-release', function(event) {
-                                if (!isDrawing) return;
-                                // 충분한 크기의 어노테이션인지 확인
-                                if (currentRect && 
-                                    parseFloat(currentRect.getAttribute("width")) > 0.001 && 
-                                    parseFloat(currentRect.getAttribute("height")) > 0.001) {
-                                    // 저장 버튼 유지 (이미 표시되어 있음)
-                                } else {
-                                    // 작은 어노테이션은 제거
-                                    if (currentRect && currentRect.parentNode) {
-                                        currentRect.parentNode.removeChild(currentRect);
-                                    }
-                                    currentRect = null;
-                                    tempAnnotation = null;
-                                    saveAnnotationBtn.style.display = 'none';
-                                }
-                                
-                                isDrawing = false;
-                                startPoint = null;
-                            });
-
-                            // 어노테이션 저장 (수정)
-                            saveAnnotationBtn.onclick = () => {
-                                if (tempAnnotation) {
-                                    const newAnnotation = {
-                                        id: Date.now(),
-                                        coordinates: tempAnnotation.imageCoords,
-                                        viewportCoordinates: tempAnnotation.viewportCoords,
-                                        date: new Date().toLocaleString()
-                                    };
-                                    
-                                    // 어노테이션 추가
-                                    annotations.push(newAnnotation);
-                                    
-                                    // 임시 그림 제거
-                                    if (currentRect && currentRect.parentNode) {
-                                        currentRect.parentNode.removeChild(currentRect);
-                                    }
-                                    currentRect = null;
-                                    tempAnnotation = null;
-                                    
-                                    // 저장 버튼 숨김
-                                    saveAnnotationBtn.style.display = 'none';
-                                    
-                                    // 모든 어노테이션 다시 그리기 및 데이터 저장
-                                    displayAnnotations();
-                                    saveData();
-                                    
-                                    // 이동 도구로 다시 전환
-                                    moveTool.click();
-                                }
-                            };
-                            
-                            // 도구 선택 (수정)
-                            moveTool.onclick = () => {
-                                viewer.setMouseNavEnabled(true);
-                                viewer.gestureSettingsMouse.clickToZoom = true;
-                                moveTool.classList.add('active-tool');
-                                annotationTool.classList.remove('active-tool');
-                                saveAnnotationBtn.style.display = 'none';
-                                
-                                // 진행 중인 어노테이션 제거
-                                if (currentRect && currentRect.parentNode) {
-                                    currentRect.parentNode.removeChild(currentRect);
-                                }
-                                currentRect = null;
-                                tempAnnotation = null;
-                            };
-
-                            annotationTool.onclick = () => {
-                                viewer.setMouseNavEnabled(false);
-                                viewer.gestureSettingsMouse.clickToZoom = false;
-                                annotationTool.classList.add('active-tool');
-                                moveTool.classList.remove('active-tool');
-                            };
-                        }
-                    })
-                    .catch(error => console.error('Failed to load SVG overlay:', error));
-            }
-
-        // 메모와 어노테이션 데이터
-        let memos = [];
-        let annotations = [];
-
-        // 서버에서 데이터 로드
+        // 데이터 로드 함수 수정
         function loadData() {
-            fetch(`http://localhost:5000/slide/${fileName}/data`)
+            return fetch(`${API_BASE_URL}/slide/${fileName}/data`)
                 .then(response => response.json())
                 .then(data => {
                     memos = data.memos || [];
@@ -650,20 +313,62 @@
                     displayMemos();
                     displayAnnotations();
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error loading data:', error);
+                    return { memos: [], annotations: [] };
+                });
         }
 
-        // 서버에 데이터 저장
+        // 데이터 저장 함수 수정
         function saveData() {
-            fetch(`http://localhost:5000/slide/${fileName}/data`, {
+            return fetch(`${API_BASE_URL}/slide/${fileName}/data`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ memos, annotations })
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => console.error('Error saving data:', error));
         }
+
+        // 초기화 코드
+        const urlParams = new URLSearchParams(window.location.search);
+        const fileName = urlParams.get('file');
+
+        if (fileName) {
+            document.getElementById('fileName').textContent = fileName;
+            
+            // 슬라이드 정보를 가져온 후 타일 소스 설정
+            getSlideInfo(fileName)
+                .then(data => {
+                    console.log('Slide info received:', data);
+                    
+                    const tileSource = {
+                        width: data.dimensions[0],
+                        height: data.dimensions[1],
+                        tileSize: data.tile_size,
+                        minLevel: 0,
+                        maxLevel: data.level_count - 1,
+                        getTileUrl: function(level, x, y) {
+                            return `${API_BASE_URL}/slide/${fileName}/tile/${level}/${x}/${y}`;
+                        },
+                        getLevelScale: function(level) {
+                            return 1 / data.level_downsamples[level];
+                        }
+                    };
+
+                    console.log('Opening viewer with tileSource:', tileSource);
+                    viewer.open(tileSource);
+                })
+                .catch(error => {
+                    console.error('Error loading slide info:', error);
+                    document.getElementById('loadingText').textContent = '슬라이드 로딩 중 오류가 발생했습니다.';
+                });
+        }
+
+        // 메모와 어노테이션 데이터
+        let memos = [];
+        let annotations = [];
 
         // 메모 표시 함수
         function displayMemos() {
@@ -685,7 +390,7 @@
             });
         }
 
-            // 어노테이션 표시 함수 (수정)
+        // 어노테이션 표시 함수 (수정)
         function displayAnnotations() {
             const annotationList = document.getElementById('annotationList');
             annotationList.innerHTML = '';
@@ -760,23 +465,23 @@
             });
         }
 
-            // 메모 함수들을 전역으로 선언하여 HTML에서 접근 가능하게 함
-            window.addMemo = function() {
+        // 메모 함수들을 전역으로 선언하여 HTML에서 접근 가능하게 함
+        window.addMemo = function() {
             const newMemoText = document.getElementById('newMemo').value.trim();
             if (newMemoText) {
                 const newMemo = {
-                        id: Date.now(),
+                    id: Date.now(),
                     text: newMemoText,
                     date: new Date().toLocaleString()
                 };
                 memos.unshift(newMemo);
                 document.getElementById('newMemo').value = '';
                 displayMemos();
-                    saveData();
+                saveData();
             }
-            };
+        };
 
-            window.editMemo = function(id) {
+        window.editMemo = function(id) {
             const memo = memos.find(m => m.id === id);
             if (memo) {
                 const newText = prompt('메모를 수정하세요:', memo.text);
@@ -784,98 +489,81 @@
                     memo.text = newText;
                     memo.date = new Date().toLocaleString() + ' (수정됨)';
                     displayMemos();
-                        saveData();
-                    }
+                    saveData();
                 }
-            };
+            }
+        };
 
-            window.deleteMemo = function(id) {
+        window.deleteMemo = function(id) {
             if (confirm('이 메모를 삭제하시겠습니까?')) {
                 memos = memos.filter(m => m.id !== id);
                 displayMemos();
-                    saveData();
-                }
-            };
+                saveData();
+            }
+        };
 
-            window.deleteAnnotation = function(id) {
+        window.deleteAnnotation = function(id) {
             if (confirm('이 어노테이션을 삭제하시겠습니까?')) {
                 annotations = annotations.filter(a => a.id !== id);
                 displayAnnotations();
-                    saveData();
+                saveData();
+            }
+        };
+
+        // 이벤트 핸들러 추가
+        viewer.addHandler('open', function() {
+            console.log('Viewer opened');
+            viewer.viewport.goHome();
+        });
+
+        // 페이지 가시성 처리 간소화
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                // 페이지가 다시 보일 때 세계 다시 그리기
+                viewer.world.draw();
+            }
+        });
+
+        // 타일 관련 타이머 처리 개선
+        let throttledRedraw = null;
+        
+        viewer.addHandler('viewport-change', function() {
+            if (throttledRedraw) {
+                clearTimeout(throttledRedraw);
+            }
+            throttledRedraw = setTimeout(() => {
+                viewer.world.draw();
+                throttledRedraw = null;
+            }, 50);
+        });
+
+        // 메모리 관리 개선
+        function cleanupMemory() {
+            if (window.gc) {
+                try {
+                    window.gc();
+                } catch (e) {
+                    console.log('GC not available');
                 }
-            };
+            }
+        }
 
-            // 이벤트 핸들러 추가
-            viewer.addHandler('open', function() {
-                console.log('Viewer opened');
-                viewer.viewport.goHome();
-            });
+        // 주기적 메모리 정리
+        setInterval(cleanupMemory, 60000);
 
-            viewer.addHandler('tile-loaded', function(event) {
-                loadedTiles++;
-                updateLoadingProgress();
-                
-                // 첫 번째 타일이 로드되면 로딩 화면 숨김
-                if (loadedTiles === 1) {
-                    setTimeout(hideLoading, 500);  // 0.5초 후 로딩 화면 숨김
-                }
-            });
-
-            viewer.addHandler('tile-drawing', function() {
-                totalTiles++;
-                updateLoadingProgress();
-            });
-
-            // 페이지 가시성 처리 간소화
-            document.addEventListener('visibilitychange', function() {
-                if (!document.hidden) {
-                    // 페이지가 다시 보일 때 세계 다시 그리기
-                    viewer.world.draw();
-                }
-            });
-
-            // 타일 관련 타이머 처리 개선
-            let throttledRedraw = null;
+        // 전역 에러 처리
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.message);
             
-            viewer.addHandler('viewport-change', function() {
-                if (throttledRedraw) {
-                    clearTimeout(throttledRedraw);
-                }
-                throttledRedraw = setTimeout(() => {
-                    viewer.world.draw();
-                    throttledRedraw = null;
-                }, 50);
-            });
-
-            // 메모리 관리 개선
-            function cleanupMemory() {
-                if (window.gc) {
-                    try {
-                        window.gc();
-                    } catch (e) {
-                        console.log('GC not available');
-                    }
-                }
-            }
-
-            // 주기적 메모리 정리
-            setInterval(cleanupMemory, 60000);
-
-            // 전역 에러 처리
-            window.addEventListener('error', function(e) {
-                console.error('Global error:', e.message);
-                
-                if (document.getElementById('loadingOverlay').style.display !== 'none') {
-                    document.getElementById('loadingText').textContent = '로딩 중 오류가 발생했습니다';
-                    setTimeout(hideLoading, 3000);
-            }
+            if (document.getElementById('loadingOverlay').style.display !== 'none') {
+                document.getElementById('loadingText').textContent = '로딩 중 오류가 발생했습니다';
+                setTimeout(hideLoading, 3000);
         });
 
         // 초기 데이터 로드
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
         });
-        }
     </script>
 </body>
 </html> 
