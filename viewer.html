@@ -303,6 +303,14 @@
             }
         });
 
+        // OpenSeadragon 뷰어 초기화 후에 추가
+        const overlay = viewer.svgOverlay();
+
+        // 어노테이션 도구 초기화
+        let isDrawing = false;
+        let startPoint = null;
+        let currentRect = null;
+
         // 데이터 로드 함수 수정
         function loadData() {
             return fetch(`${API_BASE_URL}/slide/${fileName}/data`)
@@ -558,6 +566,7 @@
             if (document.getElementById('loadingOverlay').style.display !== 'none') {
                 document.getElementById('loadingText').textContent = '로딩 중 오류가 발생했습니다';
                 setTimeout(hideLoading, 3000);
+            }
         });
 
         // 초기 데이터 로드
