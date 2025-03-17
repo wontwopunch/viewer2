@@ -308,6 +308,25 @@
         } else {
         document.getElementById('fileName').textContent = fileName;
 
+            // API 기본 URL 설정
+            const API_BASE_URL = 'http://188.166.255.196:5000';
+
+            // 슬라이드 정보 가져오기
+            function getSlideInfo(filename) {
+                return fetch(`${API_BASE_URL}/slide/${filename}/info`)
+                    .then(response => response.json());
+            }
+
+            // 데이터 로드
+            function loadData() {
+                return fetch(`${API_BASE_URL}/slide/${fileName}/data`)
+                    .then(response => response.json())
+                    .catch(error => {
+                        console.error('Error:', error);
+                        return { memos: [], annotations: [] };
+                    });
+            }
+
             // 슬라이드 정보를 가져온 후 타일 소스 설정
             const baseUrl = window.location.pathname.startsWith('/public/') ? 
                 `/public/${fileName}` : `/slide/${fileName}`;
@@ -398,6 +417,14 @@
                 loadTilesWithAjax: true,
                 ajaxHeaders: {
                     'Cache-Control': 'public, max-age=3600'
+                },
+                tileSources: {
+                    getTileUrl: function(level, x, y) {
+                        return `${API_BASE_URL}/slide/${fileName}/tile/${level}/${x}/${y}`;
+                    },
+                    getLevelScale: function(level) {
+                        return 1 / data.level_downsamples[level];
+                    }
                 }
             });
 
