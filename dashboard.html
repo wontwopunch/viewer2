@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 대시보드</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         * {
             box-sizing: border-box;
@@ -439,15 +440,50 @@
             }
         }
 
-        // 공유 링크 복사 함수
+        // 공유 링크 복사 함수 수정
         function copyShareLink(filename) {
             const shareUrl = `${window.location.origin}/public/${filename}`;
-            navigator.clipboard.writeText(shareUrl).then(() => {
+            
+            // 모던 브라우저용 클립보드 API와 폴백 방식 모두 구현
+            if (navigator.clipboard && window.isSecureContext) {
+                // 모던 브라우저
+                navigator.clipboard.writeText(shareUrl)
+                    .then(() => {
+                        alert('공유 링크가 클립보드에 복사되었습니다.');
+                    })
+                    .catch(err => {
+                        console.error('클립보드 복사 실패:', err);
+                        fallbackCopyTextToClipboard(shareUrl);
+                    });
+            } else {
+                // 폴백 방식
+                fallbackCopyTextToClipboard(shareUrl);
+            }
+        }
+
+        // 폴백 복사 함수 추가
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            
+            // 화면 밖으로 위치시킴
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
                 alert('공유 링크가 클립보드에 복사되었습니다.');
-            }).catch(err => {
+            } catch (err) {
                 console.error('클립보드 복사 실패:', err);
-                alert('공유 링크 복사에 실패했습니다.');
-            });
+                alert('공유 링크 복사에 실패했습니다. 직접 선택하여 복사해주세요.');
+            }
+            
+            document.body.removeChild(textArea);
         }
 
         // 공개/비공개 토글 함수 수정
