@@ -12,6 +12,10 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from werkzeug.middleware.proxy_fix import ProxyFix
+import gc
+import psutil
+import time
+from threading import Timer
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -106,9 +110,9 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 # 타일 크기와 품질 상수 정의
-TILE_SIZE = 1024
-JPEG_QUALITY = 60  # 품질 더 낮춤
-MAX_WORKERS = 16   # 워커 수 증가
+TILE_SIZE = 2048
+JPEG_QUALITY = 60
+MAX_WORKERS = 16
 
 # 스레드 풀과 캐시 설정 조정
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
@@ -130,6 +134,22 @@ def get_slide(slide_path):
         slide_cache[slide_path] = openslide.OpenSlide(slide_path)
     return slide_cache[slide_path]
 
+# 메모리 관리 상수
+MAX_MEMORY_GB = 1.5  # 최대 메모리 사용량 (GB)
+GC_INTERVAL = 300    # 가비지 컬렉션 간격 (초)
+
+def check_memory_usage():
+    process = psutil.Process()
+    memory_gb = process.memory_info().rss / 1024 / 1024 / 1024
+    
+    if memory_gb > MAX_MEMORY_GB:
+        print(f"Memory usage ({memory_gb:.2f}GB) exceeded limit. Clearing caches...")
+        tile_cache.clear()
+        gc.collect()
+
+# 주기적으로 메모리 체크
+Timer(GC_INTERVAL, check_memory_usage).start()
+
 def create_tile(slide, level, x, y, tile_size, filename):
     try:
         cache_key = f"{filename}_{level}_{x}_{y}"
@@ -137,23 +157,49 @@ def create_tile(slide, level, x, y, tile_size, filename):
         if cache_key in tile_cache:
             return tile_cache[cache_key]
         
+        # 메모리 사용량 체크
+        check_memory_usage()
+        
         # 타일 크기 고정
         tile_size = TILE_SIZE
         
-        factor = slide.level_downsamples[level]
-        x_pos = int(x * tile_size * factor)
-        y_pos = int(y * tile_size * factor)
+        # 메모리 최적화를 위해 큰 타일은 분할 처리
+        if tile_size > 1024:
+            factor = slide.level_downsamples[level]
+            x_pos = int(x * tile_size * factor)
+            y_pos = int(y * tile_size * factor)
+            
+            # 4개의 작은 타일로 분할
+            half_size = tile_size // 2
+            tiles = []
+            for dy in (0, half_size):
+                for dx in (0, half_size):
+                    sub_tile = slide.read_region(
+                        (x_pos + dx, y_pos + dy),
+                        level,
+                        (half_size, half_size)
+                    )
+                    tiles.append(sub_tile.convert('RGB'))
+            
+            # 작은 타일들을 합치기
+            tile = PIL.Image.new('RGB', (tile_size, tile_size))
+            tile.paste(tiles[0], (0, 0))
+            tile.paste(tiles[1], (half_size, 0))
+            tile.paste(tiles[2], (0, half_size))
+            tile.paste(tiles[3], (half_size, half_size))
+            
+            # 메모리 해제
+            for t in tiles:
+                t.close()
+        else:
+            # 작은 타일은 직접 읽기
+            factor = slide.level_downsamples[level]
+            x_pos = int(x * tile_size * factor)
+            y_pos = int(y * tile_size * factor)
+            tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
+            tile = tile.convert('RGB')
         
-        # 메모리 최적화
-        tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
-        tile = tile.convert('RGB')
         tile.load()
-        
-        # 이미지 크기가 크면 리사이즈
-        if tile.size[0] > TILE_SIZE or tile.size[1] > TILE_SIZE:
-            tile = tile.resize((TILE_SIZE, TILE_SIZE), PIL.Image.Resampling.LANCZOS)
-        
-        # 메모리 해제
         tile_copy = tile.copy()
         tile.close()
         
