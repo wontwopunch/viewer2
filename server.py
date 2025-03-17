@@ -78,7 +78,7 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 slide_cache = TTLCache(maxsize=20, ttl=3600)
-tile_cache = LRUCache(maxsize=10000)
+tile_cache = TTLCache(maxsize=1000, ttl=3600)
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -331,16 +331,13 @@ def get_slide_info(filename):
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        tile_size = 2048
+        cache_key = f"{filename}_{level}_{x}_{y}"
         
-        cache_key = f"{slide_path}_{level}_{x}_{y}"
-        
-        # 캐시된 이미지가 있는지 확인
-        cached_tile = tile_cache.get(cache_key)
-        if cached_tile is not None:
+        # 캐시된 타일이 있으면 반환
+        if cache_key in tile_cache:
+            tile = tile_cache[cache_key]
             output = io.BytesIO()
-            cached_tile.save(output, format='JPEG', quality=90)
+            tile.save(output, format='JPEG', quality=90)
             output.seek(0)
             response = make_response(send_file(
                 output,
@@ -349,6 +346,9 @@ def get_tile(filename, level, x, y):
             ))
             response.headers['Cache-Control'] = 'public, max-age=3600'
             return response
+        
+        slide_path = os.path.join(UPLOAD_FOLDER, filename)
+        tile_size = 2048
         
         if slide_path not in slide_cache:
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
@@ -491,4 +491,4 @@ def get_public_tile(filename, level, x, y):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, threaded=True)

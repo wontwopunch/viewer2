@@ -291,13 +291,29 @@
             navigatorHeight: "150px",
             navigatorWidth: "150px",
             showRotationControl: true,
+            
+            // 타임아웃 및 성능 설정 추가
+            timeout: 120000,           // 타임아웃을 120초로 증가
+            imageLoaderLimit: 5,       // 동시 이미지 로딩 제한
+            pixelsPerWheelLine: 40,   // 스크롤 속도 조정
+            visibilityRatio: 0.5,     // 뷰포트 바깥 영역 미리 로딩
+            
+            // 타일 설정
+            minZoomImageRatio: 0.8,
+            maxZoomPixelRatio: 2,
+            defaultZoomLevel: 0,
+            
+            // 제스처 설정
             gestureSettingsMouse: {
                 clickToZoom: true,
                 dblClickToZoom: true,
                 pinchToZoom: true,
                 scrollToZoom: true
             },
-            timeout: 60000,
+            
+            // 캐시 설정
+            maxImageCacheCount: 500,
+            
             ajaxHeaders: {
                 'Cache-Control': 'public, max-age=3600'
             }
