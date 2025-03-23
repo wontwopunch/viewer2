@@ -7,12 +7,18 @@
     <!-- favicon 추가 -->
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
     
-    <!-- OpenSeadragon 메인 라이브러리 -->
+    <!-- OpenSeadragon 메인 라이브러리 먼저 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     
-    <!-- OpenSeadragon SVG Overlay 플러그인 - 절대 경로 사용 -->
-    <script src="/openseadragon-svg-overlay.js"></script>
+    <!-- 잠시 대기 후 SVG Overlay 플러그인 로드 -->
+    <script>
+        window.addEventListener('load', function() {
+            var script = document.createElement('script');
+            script.src = '/openseadragon-svg-overlay.js';
+            document.head.appendChild(script);
+        });
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -370,14 +376,20 @@
             });
 
             // SVG 오버레이 초기화
-            const overlay = viewer.svgOverlay();
+            if (viewer.svgOverlay) {
+                const overlay = viewer.svgOverlay();
+            } else {
+                console.warn('SVG Overlay plugin not available');
+            }
             
             // 어노테이션 도구 초기화
-            let isDrawing = false;
-            let startPoint = null;
-            let currentRect = null;
-
-            // 여기에 나머지 이벤트 핸들러와 기능 추가
+            if (viewer.svgOverlay) {
+                let isDrawing = false;
+                let startPoint = null;
+                let currentRect = null;
+            } else {
+                console.warn('Annotation tools disabled - SVG Overlay not available');
+            }
             
         }).catch(error => {
             console.error('Error loading slide info:', error);
