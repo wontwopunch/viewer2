@@ -215,20 +215,36 @@ def create_tile(slide, level, x, y, tile_size, filename):
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        slide_path = os.path.join(UPLOAD_FOLDER, filename)
+        # 캐시 키 생성
+        cache_key = f"{filename}_{level}_{x}_{y}"
         
+        # 캐시된 타일이 있으면 바로 반환
+        if cache_key in tile_cache:
+            output = io.BytesIO()
+            tile_cache[cache_key].save(output, format='JPEG', quality=JPEG_QUALITY)
+            output.seek(0)
+            response = make_response(send_file(
+                output,
+                mimetype='image/jpeg',
+                as_attachment=False
+            ))
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+            return response
+            
+        # 슬라이드 가져오기
+        slide_path = os.path.join(UPLOAD_FOLDER, filename)
         if slide_path not in slide_cache:
-            slide = openslide.OpenSlide(slide_path)
-            slide_cache[slide_path] = slide
+            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
+        # 타일 생성
         tile = create_tile(slide, level, x, y, TILE_SIZE, filename)
         if tile is None:
             return jsonify({'error': 'Failed to create tile'}), 500
-        
+            
+        # 응답 생성
         output = io.BytesIO()
-        # JPEG 품질 더 낮춤
-        tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+        tile.save(output, format='JPEG', quality=JPEG_QUALITY)
         output.seek(0)
         
         response = make_response(send_file(
@@ -236,7 +252,7 @@ def get_tile(filename, level, x, y):
             mimetype='image/jpeg',
             as_attachment=False
         ))
-        response.headers['Cache-Control'] = 'public, max-age=7200'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
         return response
         
     except Exception as e:
