@@ -354,14 +354,17 @@
                     type: 'legacy-image-pyramid',
                     width: info.dimensions[0],
                     height: info.dimensions[1],
-                    tileSize: 2048,  // server.py의 TILE_SIZE와 동일하게 설정
+                    tileSize: 1024,  // 2048에서 1024로 변경 (server.py와 일치)
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
                     getLevelScale: function(level) {
                         return 1 / info.level_downsamples[level];
                     },
                     getTileUrl: function(level, x, y) {
-                        return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                        const isPublic = window.location.pathname.startsWith('/public/');
+                        return isPublic ?
+                            `${API_BASE_URL}/public/${filename}/tile/${level}/${x}/${y}` :
+                            `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
                     }
                 }
             });
