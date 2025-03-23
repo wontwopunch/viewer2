@@ -80,9 +80,10 @@ def serve_file(filename):
     
     # 정적 파일 처리
     try:
-        # 먼저 static 폴더에서 찾기
         if os.path.exists(os.path.join(STATIC_FOLDER, filename)):
+            print(f"Serving static file: {filename}")  # 디버그 로그 추가
             return send_from_directory(STATIC_FOLDER, filename)
+        print(f"File not found: {filename}")  # 디버그 로그 추가
         return "File not found", 404
     except Exception as e:
         print(f"Error serving static file: {str(e)}")
