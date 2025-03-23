@@ -1,4 +1,4 @@
-from flask import Flask, send_file, jsonify, request, send_from_directory, make_response
+from flask import Flask, send_file, jsonify, request, send_from_directory, make_response, abort
 import openslide
 from flask_cors import CORS
 import os
@@ -16,6 +16,7 @@ import gc
 import psutil
 import time
 from threading import Timer
+import re
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,14 +38,43 @@ CORS(app, resources={
 # 미들웨어 설정
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# 허용되지 않은 경로 차단
+# 보안 설정
+ALLOWED_PATHS = [
+    r'^/$',
+    r'^/static/.*',
+    r'^/slide/.*\.svs/.*$',
+    r'^/public/.*\.svs/.*$',
+    r'^/viewer\.html$',
+    r'^/dashboard\.html$',
+    r'^/files$',
+    r'^/upload$'
+]
+
 @app.before_request
-def block_sensitive_paths():
-    blocked_paths = ['.env', '.git', 'admin', 'configuration', 'settings']
-    path = request.path.lstrip('/')
-    for blocked in blocked_paths:
-        if path.startswith(blocked):
-            return "Not Found", 404
+def security_check():
+    # 허용된 경로가 아니면 차단
+    path = request.path
+    if not any(re.match(pattern, path) for pattern in ALLOWED_PATHS):
+        print(f"Blocked unauthorized access to: {path}")
+        return abort(404)
+    
+    # 악의적인 문자열 체크
+    if any(bad in path.lower() for bad in ['.env', 'admin', 'login', 'console', 'api']):
+        print(f"Blocked suspicious request to: {path}")
+        return abort(404)
+    
+    # 메소드 제한
+    if request.method not in ['GET', 'POST', 'OPTIONS']:
+        return abort(405)
+
+# 에러 핸들러 추가
+@app.errorhandler(404)
+def not_found(e):
+    return '', 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return '', 405
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
