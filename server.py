@@ -110,7 +110,7 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 # 타일 크기와 품질 상수 정의
-TILE_SIZE = 2048
+TILE_SIZE = 1024
 JPEG_QUALITY = 60
 MAX_WORKERS = 16
 
@@ -135,7 +135,7 @@ def get_slide(slide_path):
     return slide_cache[slide_path]
 
 # 메모리 관리 상수
-MAX_MEMORY_GB = 1.5  # 최대 메모리 사용량 (GB)
+MAX_MEMORY_GB = 2.5  # 1.5G에서 2.5G로 증가
 GC_INTERVAL = 300    # 가비지 컬렉션 간격 (초)
 
 def check_memory_usage():
