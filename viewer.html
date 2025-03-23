@@ -277,20 +277,42 @@
     <script>
         // URL에서 파일명 가져오기
         const urlParams = new URLSearchParams(window.location.search);
-        const filename = urlParams.get('file');
+        let filename = urlParams.get('file');
+        
+        // public 경로로 접근한 경우 처리
+        if (!filename) {
+            const pathParts = window.location.pathname.split('/');
+            if (pathParts.includes('public')) {
+                filename = pathParts[pathParts.length - 1];
+            }
+        }
         
         if (!filename) {
             alert('파일명이 지정되지 않았습니다.');
-            window.location.href = '/';
+            window.location.href = '/dashboard.html';
+            throw new Error('No filename specified');
         }
+
+        // 파일명 표시
+        document.getElementById('fileName').textContent = filename;
 
         // API 기본 URL 설정
         const API_BASE_URL = 'http://188.166.255.196:5000';
 
         // 슬라이드 정보 가져오기
         function getSlideInfo(filename) {
-            return fetch(`${API_BASE_URL}/slide/${filename}/info`)
-                .then(response => response.json());
+            const isPublic = window.location.pathname.startsWith('/public/');
+            const endpoint = isPublic ? 
+                `${API_BASE_URL}/public/${filename}/info` : 
+                `${API_BASE_URL}/slide/${filename}/info`;
+            
+            return fetch(endpoint)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load slide info');
+                    }
+                    return response.json();
+                });
         }
 
         // 슬라이드 정보를 가져온 후 뷰어 초기화
