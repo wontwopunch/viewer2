@@ -11,14 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     
-    <!-- 잠시 대기 후 SVG Overlay 플러그인 로드 -->
-    <script>
-        window.addEventListener('load', function() {
-            var script = document.createElement('script');
-            script.src = '/openseadragon-svg-overlay.js';
-            document.head.appendChild(script);
-        });
-    </script>
+    <!-- OpenSeadragon SVG Overlay 플러그인 - 정적 경로 사용 -->
+    <script src="/static/openseadragon-svg-overlay.js"></script>
     <style>
         * {
             box-sizing: border-box;
