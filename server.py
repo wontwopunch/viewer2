@@ -117,8 +117,8 @@ MAX_WORKERS = 16
 
 # 스레드 풀과 캐시 설정 조정
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
-slide_cache = TTLCache(maxsize=5, ttl=7200)
-tile_cache = TTLCache(maxsize=2000, ttl=3600)  # 캐시 크기 증가
+slide_cache = TTLCache(maxsize=3, ttl=3600)
+tile_cache = TTLCache(maxsize=500, ttl=1800)
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -136,8 +136,8 @@ def get_slide(slide_path):
     return slide_cache[slide_path]
 
 # 메모리 관리 상수
-MAX_MEMORY_GB = 2.5  # 1.5G에서 2.5G로 증가
-GC_INTERVAL = 300    # 가비지 컬렉션 간격 (초)
+MAX_MEMORY_GB = 1.5  # 2.0에서 1.5로 감소
+GC_INTERVAL = 60     # 300초에서 60초로 감소 (더 자주 체크)
 
 def check_memory_usage():
     process = psutil.Process()
@@ -157,59 +157,35 @@ def create_tile(slide, level, x, y, tile_size, filename):
         
         if cache_key in tile_cache:
             return tile_cache[cache_key]
-        
-        # 메모리 사용량 체크
+            
+        # 메모리 체크 추가
         check_memory_usage()
         
-        # 타일 크기 고정
-        tile_size = TILE_SIZE
+        # 타일 크기 최적화
+        factor = slide.level_downsamples[level]
+        x_pos = int(x * tile_size * factor)
+        y_pos = int(y * tile_size * factor)
         
-        # 메모리 최적화를 위해 큰 타일은 분할 처리
-        if tile_size > 1024:
-            factor = slide.level_downsamples[level]
-            x_pos = int(x * tile_size * factor)
-            y_pos = int(y * tile_size * factor)
-            
-            # 4개의 작은 타일로 분할
-            half_size = tile_size // 2
-            tiles = []
-            for dy in (0, half_size):
-                for dx in (0, half_size):
-                    sub_tile = slide.read_region(
-                        (x_pos + dx, y_pos + dy),
-                        level,
-                        (half_size, half_size)
-                    )
-                    tiles.append(sub_tile.convert('RGB'))
-            
-            # 작은 타일들을 합치기
-            tile = PIL.Image.new('RGB', (tile_size, tile_size))
-            tile.paste(tiles[0], (0, 0))
-            tile.paste(tiles[1], (half_size, 0))
-            tile.paste(tiles[2], (0, half_size))
-            tile.paste(tiles[3], (half_size, half_size))
-            
-            # 메모리 해제
-            for t in tiles:
-                t.close()
-        else:
-            # 작은 타일은 직접 읽기
-            factor = slide.level_downsamples[level]
-            x_pos = int(x * tile_size * factor)
-            y_pos = int(y * tile_size * factor)
-            tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
-            tile = tile.convert('RGB')
+        # 더 작은 크기로 읽기
+        read_size = min(tile_size, 512)  # 1024에서 512로 감소
+        tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
+        tile = tile.convert('RGB')
         
+        if read_size != tile_size:
+            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.BILINEAR)  # LANCZOS에서 BILINEAR로 변경 (더 빠름)
+        
+        # 메모리 해제
         tile.load()
         tile_copy = tile.copy()
         tile.close()
         
-        # 캐시에 저장
+        # JPEG 품질 더 낮춤
         tile_cache[cache_key] = tile_copy
         return tile_copy
         
     except Exception as e:
         print(f"Error creating tile: {str(e)}")
+        gc.collect()  # 에러 발생시 메모리 정리
         return None
 
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
@@ -550,4 +526,5 @@ def get_public_tile(filename, level, x, y):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
+    # 프로세스 수를 1로 제한하고 스레드 사용
     app.run(host='0.0.0.0', port=5000, threaded=True, processes=1)
