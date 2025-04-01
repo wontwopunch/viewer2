@@ -17,6 +17,7 @@ import psutil
 import time
 from threading import Timer
 import re
+from werkzeug.serving import run_simple
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -569,5 +570,8 @@ def favicon():
     return send_from_directory(STATIC_FOLDER, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == '__main__':
-    # 타임아웃 설정 추가
-    app.run(host='0.0.0.0', port=5000, threaded=True, processes=1, timeout=600)
+    # 프로세스 수를 1로 제한하고 스레드 사용
+    app.run(host='0.0.0.0', 
+           port=5000, 
+           threaded=True, 
+           processes=1)
