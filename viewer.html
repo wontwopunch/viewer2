@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SVS 파일 뷰어</title>
-    <!-- favicon 추가 -->
-    <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
+    <!-- favicon 추가 - base64 인코딩된 빈 아이콘 사용 -->
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA/4QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREQAAAAAAEAAAEAAAAAEAAAABAAAAEAAAAAAQAAAQAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAA//8AAP//AAD8HwAA++8AAPf3AADv+wAA7/sAAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA">
     
     <!-- OpenSeadragon 메인 라이브러리 먼저 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     
-    <!-- OpenSeadragon SVG Overlay 플러그인 - static 경로 사용 -->
-    <script src="/static/openseadragon-svg-overlay.js"></script>
+    <!-- OpenSeadragon SVG Overlay 플러그인 - CDN 사용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon-svg-overlay/0.0.8/openseadragon-svg-overlay.min.js"></script>
     <style>
         * {
             box-sizing: border-box;

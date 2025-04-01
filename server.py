@@ -569,5 +569,5 @@ def favicon():
     return send_from_directory(STATIC_FOLDER, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == '__main__':
-    # 프로세스 수를 1로 제한하고 스레드 사용
-    app.run(host='0.0.0.0', port=5000, threaded=True, processes=1)
+    # 타임아웃 설정 추가
+    app.run(host='0.0.0.0', port=5000, threaded=True, processes=1, timeout=600)
