@@ -396,19 +396,31 @@
                 navigatorWidth: "150px",
                 showRotationControl: true,
                 
-                // 타일 로딩 설정 최적화
-                imageLoaderLimit: 5,        // 동시 로딩 제한 감소
-                timeout: 120000,           // 타임아웃 증가 (2분)
-                
-                // 타일 설정
-                minZoomImageRatio: 1,
-                maxZoomPixelRatio: 2,
-                immediateRender: false,    // 렌더링 최적화
-                blendTime: 0.1,
+                // 타일 로딩 최적화
+                imageLoaderLimit: 3,        // 동시 로딩 수 더 감소
+                placeholderFillStyle: "#000",
+                immediateRender: true,      // 즉시 렌더링으로 변경
+                blendTime: 0,              // 블렌딩 효과 제거
                 alwaysBlend: false,
                 
-                // 캐시 설정
-                maxImageCacheCount: 500,   // 캐시 크기 조정
+                // 타일 우선순위 설정
+                viewportMargins: {
+                    top: 0.5,
+                    left: 0.5,
+                    right: 0.5,
+                    bottom: 0.5
+                },
+                
+                // 메모리 관리
+                maxImageCacheCount: 200,    // 캐시 크기 조정
+                minZoomImageRatio: 0.8,
+                maxZoomPixelRatio: 1.2,
+                
+                // 타일 오버랩 설정
+                tileOverlap: 1,            // 타일 간 겹침 픽셀
+                
+                // 디버그 모드
+                debugMode: false,
                 
                 // 타일 소스 설정
                 tileSources: {

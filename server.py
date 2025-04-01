@@ -197,35 +197,29 @@ def create_tile(slide, level, x, y, tile_size, filename):
         
         if cache_key in tile_cache:
             return tile_cache[cache_key]
-            
-        # 메모리 체크 추가
-        check_memory_usage()
         
-        # 타일 크기 최적화
+        # 타일 경계 계산
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
         
-        # 더 작은 크기로 읽기
-        read_size = min(tile_size, 512)  # 1024에서 512로 감소
+        # 타일 크기 조정
+        read_size = tile_size
+        if x_pos + read_size > slide.dimensions[0]:
+            read_size = slide.dimensions[0] - x_pos
+        if y_pos + read_size > slide.dimensions[1]:
+            read_size = slide.dimensions[1] - y_pos
+            
+        # 타일 읽기
         tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
         tile = tile.convert('RGB')
         
-        if read_size != tile_size:
-            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.BILINEAR)  # LANCZOS에서 BILINEAR로 변경 (더 빠름)
-        
-        # 메모리 해제
-        tile.load()
-        tile_copy = tile.copy()
-        tile.close()
-        
-        # JPEG 품질 더 낮춤
-        tile_cache[cache_key] = tile_copy
-        return tile_copy
+        # 캐시 저장
+        tile_cache[cache_key] = tile
+        return tile
         
     except Exception as e:
         print(f"Error creating tile: {str(e)}")
-        gc.collect()  # 에러 발생시 메모리 정리
         return None
 
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
