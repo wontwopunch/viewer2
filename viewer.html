@@ -11,8 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     
-    <!-- OpenSeadragon SVG Overlay 플러그인 - 정적 경로 사용 -->
-    <script src="/static/openseadragon-svg-overlay.js"></script>
+    <!-- OpenSeadragon SVG Overlay 플러그인 - CDN 사용 -->
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon-svg-overlay@0.0.8/openseadragon-svg-overlay.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -331,30 +331,26 @@
                 navigatorWidth: "150px",
                 showRotationControl: true,
                 
-                // 성능 최적화 설정
-                imageLoaderLimit: 10,        // 동시 로딩 제한 증가
-                pixelsPerWheelLine: 40,
-                visibilityRatio: 0.5,
-                minZoomImageRatio: 0.8,
-                maxZoomPixelRatio: 2,
-                immediateRender: true,
-                preserveViewport: true,
+                // 타일 로딩 설정 최적화
+                imageLoaderLimit: 5,        // 동시 로딩 제한 감소
+                timeout: 120000,           // 타임아웃 증가 (2분)
                 
                 // 타일 설정
-                maxImageCacheCount: 1000,    // 캐시 크기 증가
-                timeout: 60000,              // 타임아웃 증가
-                
-                // 로딩 설정
-                placeholderFillStyle: "#000",
-                blendTime: 0,
+                minZoomImageRatio: 1,
+                maxZoomPixelRatio: 2,
+                immediateRender: false,    // 렌더링 최적화
+                blendTime: 0.1,
                 alwaysBlend: false,
+                
+                // 캐시 설정
+                maxImageCacheCount: 500,   // 캐시 크기 조정
                 
                 // 타일 소스 설정
                 tileSources: {
                     type: 'legacy-image-pyramid',
                     width: info.dimensions[0],
                     height: info.dimensions[1],
-                    tileSize: 2048,  // 1024에서 2048로 변경
+                    tileSize: 2048,
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
                     getLevelScale: function(level) {
