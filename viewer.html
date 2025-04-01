@@ -11,8 +11,54 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     
-    <!-- OpenSeadragon SVG Overlay 플러그인 - CDN 사용 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon-svg-overlay/0.0.8/openseadragon-svg-overlay.min.js"></script>
+    <!-- OpenSeadragon SVG Overlay 플러그인 - 인라인 코드 -->
+    <script>
+    // SVG Overlay 플러그인 코드
+    (function() {
+        if (!window.OpenSeadragon) {
+            console.error('OpenSeadragon is not available');
+            return;
+        }
+        
+        OpenSeadragon.Overlay = OpenSeadragon.Overlay || {};
+        
+        OpenSeadragon.Overlay.SVG = function(options) {
+            OpenSeadragon.extend(this, options);
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            this.element.style.position = "absolute";
+            this.element.style.left = 0;
+            this.element.style.top = 0;
+            this.element.style.width = "100%";
+            this.element.style.height = "100%";
+        };
+        
+        OpenSeadragon.Overlay.SVG.prototype = {
+            createElement: function(tagName) {
+                return document.createElementNS("http://www.w3.org/2000/svg", tagName);
+            },
+            
+            resize: function() {
+                // 크기 조정 로직
+            },
+            
+            update: function(viewport) {
+                // 뷰포트 업데이트 로직
+            }
+        };
+        
+        OpenSeadragon.Viewer.prototype.svgOverlay = function() {
+            if (this._svgOverlay) {
+                return this._svgOverlay;
+            }
+            
+            this._svgOverlay = new OpenSeadragon.Overlay.SVG({
+                viewer: this
+            });
+            this.addOverlay(this._svgOverlay.element, this.viewport.getBounds());
+            return this._svgOverlay;
+        };
+    })();
+    </script>
     <style>
         * {
             box-sizing: border-box;
