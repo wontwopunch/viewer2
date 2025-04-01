@@ -198,21 +198,32 @@ def create_tile(slide, level, x, y, tile_size, filename):
         if cache_key in tile_cache:
             return tile_cache[cache_key]
         
-        # 타일 경계 계산
+        # 타일 경계 계산 개선
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
         
-        # 타일 크기 조정
+        # 타일 크기 계산 개선
         read_size = tile_size
         if x_pos + read_size > slide.dimensions[0]:
             read_size = slide.dimensions[0] - x_pos
         if y_pos + read_size > slide.dimensions[1]:
             read_size = slide.dimensions[1] - y_pos
             
+        # 패딩 추가
+        padding = 2  # 2픽셀 패딩
+        x_pos = max(0, x_pos - padding)
+        y_pos = max(0, y_pos - padding)
+        read_size = min(slide.dimensions[0] - x_pos, read_size + 2 * padding)
+        read_size = min(slide.dimensions[1] - y_pos, read_size + 2 * padding)
+        
         # 타일 읽기
         tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
         tile = tile.convert('RGB')
+        
+        # 크기 조정이 필요한 경우
+        if read_size != tile_size:
+            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
         
         # 캐시 저장
         tile_cache[cache_key] = tile
