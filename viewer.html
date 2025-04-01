@@ -11,8 +11,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.css">
     
-    <!-- OpenSeadragon SVG Overlay 플러그인 - CDN 사용 -->
-    <script src="https://cdn.jsdelivr.net/npm/openseadragon-svg-overlay@0.0.8/openseadragon-svg-overlay.min.js"></script>
+    <!-- OpenSeadragon SVG Overlay 플러그인 - 로컬 파일 사용 -->
+    <script src="openseadragon-svg-overlay.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -366,10 +366,15 @@
             });
 
             // SVG 오버레이 초기화
-            if (viewer.svgOverlay) {
-                const overlay = viewer.svgOverlay();
-            } else {
-                console.warn('SVG Overlay plugin not available');
+            try {
+                if (typeof OpenSeadragon.SVGOverlay !== 'undefined') {
+                    const overlay = viewer.svgOverlay();
+                    console.log('SVG Overlay initialized successfully');
+                } else {
+                    console.warn('SVG Overlay plugin not available - continuing without annotation support');
+                }
+            } catch (e) {
+                console.warn('Error initializing SVG Overlay:', e);
             }
             
             // 어노테이션 도구 초기화
