@@ -30,8 +30,8 @@ app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
 CORS(app, resources={
     r"/*": {
         "origins": "*",
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
+        "methods": ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
     }
 })
 
