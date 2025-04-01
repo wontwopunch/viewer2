@@ -141,14 +141,14 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 # 타일 크기와 품질 상수 정의
-TILE_SIZE = 1024
+TILE_SIZE = 2048
 JPEG_QUALITY = 60
 MAX_WORKERS = 16
 
 # 스레드 풀과 캐시 설정 조정
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
-slide_cache = TTLCache(maxsize=3, ttl=3600)
-tile_cache = TTLCache(maxsize=500, ttl=1800)
+slide_cache = TTLCache(maxsize=10, ttl=7200)
+tile_cache = TTLCache(maxsize=2000, ttl=3600)
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -166,8 +166,8 @@ def get_slide(slide_path):
     return slide_cache[slide_path]
 
 # 메모리 관리 상수
-MAX_MEMORY_GB = 1.5  # 2.0에서 1.5로 감소
-GC_INTERVAL = 60     # 300초에서 60초로 감소 (더 자주 체크)
+MAX_MEMORY_GB = 6.0  # 8GB 중 6GB까지 사용
+GC_INTERVAL = 300    # 가비지 컬렉션 간격 늘림
 
 def check_memory_usage():
     process = psutil.Process()
