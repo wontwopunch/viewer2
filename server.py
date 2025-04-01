@@ -47,6 +47,7 @@ ALLOWED_PATHS = [
     r'^/viewer\.html$',
     r'^/dashboard\.html$',
     r'^/files$',
+    r'^/files/.*$',  # files 엔드포인트 추가
     r'^/upload$'
 ]
 
@@ -63,9 +64,17 @@ def security_check():
         print(f"Blocked suspicious request to: {path}")
         return abort(404)
     
-    # 메소드 제한
-    if request.method not in ['GET', 'POST', 'OPTIONS']:
+    # 메소드 제한 수정
+    if request.method not in ['GET', 'POST', 'OPTIONS', 'DELETE']:  # OPTIONS와 DELETE 추가
         return abort(405)
+
+    # OPTIONS 요청 처리
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
 
 # 에러 핸들러 추가
 @app.errorhandler(404)
@@ -554,6 +563,10 @@ def get_public_tile(filename, level, x, y):
     except Exception as e:
         print(f"Error in get_public_tile: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(STATIC_FOLDER, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == '__main__':
     # 프로세스 수를 1로 제한하고 스레드 사용
