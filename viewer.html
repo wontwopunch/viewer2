@@ -30,6 +30,13 @@
             this.element.style.top = 0;
             this.element.style.width = "100%";
             this.element.style.height = "100%";
+            
+            // 뷰어 참조 저장
+            this.viewer = options.viewer;
+            
+            // 이벤트 바인딩
+            this.viewer.addHandler('update-viewport', () => this.resize());
+            this.viewer.addHandler('open', () => this.resize());
         };
         
         OpenSeadragon.Overlay.SVG.prototype = {
@@ -38,11 +45,23 @@
             },
             
             resize: function() {
-                // 크기 조정 로직
+                if (this.viewer) {
+                    const viewport = this.viewer.viewport;
+                    if (viewport) {
+                        const containerSize = viewport.getContainerSize();
+                        this.element.setAttribute('width', containerSize.x);
+                        this.element.setAttribute('height', containerSize.y);
+                    }
+                }
             },
             
             update: function(viewport) {
-                // 뷰포트 업데이트 로직
+                // SVG 요소들의 위치와 크기 업데이트
+                if (viewport) {
+                    const zoom = viewport.getZoom();
+                    const pan = viewport.getCenter();
+                    // 여기에 SVG 요소 업데이트 로직 추가
+                }
             }
         };
         
@@ -413,22 +432,22 @@
 
             // SVG 오버레이 초기화
             try {
-                if (typeof OpenSeadragon.SVGOverlay !== 'undefined') {
+                if (typeof OpenSeadragon.Overlay !== 'undefined' && typeof OpenSeadragon.Overlay.SVG !== 'undefined') {
                     const overlay = viewer.svgOverlay();
                     console.log('SVG Overlay initialized successfully');
+                    
+                    // 어노테이션 도구 초기화
+                    let isDrawing = false;
+                    let startPoint = null;
+                    let currentRect = null;
+                    
+                    // 여기에 어노테이션 관련 코드 추가
+                    
                 } else {
                     console.warn('SVG Overlay plugin not available - continuing without annotation support');
                 }
             } catch (e) {
-                console.warn('Error initializing SVG Overlay:', e);
-            }
-            
-            // 어노테이션 도구 초기화
-            if (viewer.svgOverlay) {
-                let isDrawing = false;
-                let startPoint = null;
-                let currentRect = null;
-            } else {
+                console.error('Error initializing SVG Overlay:', e);
                 console.warn('Annotation tools disabled - SVG Overlay not available');
             }
             
