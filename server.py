@@ -282,14 +282,33 @@ def get_tile(filename, level, x, y):
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
 
-        # 타일 위치 계산
-        factor = slide.level_downsamples[level]
-        x_pos = int(x * 2048 * factor)
-        y_pos = int(y * 2048 * factor)
+        # 타일 크기 계산
+        tile_size = 2048
+        level_downsample = slide.level_downsamples[level]
         
+        # 타일 위치 계산
+        x_pos = int(x * tile_size * level_downsample)
+        y_pos = int(y * tile_size * level_downsample)
+        
+        # 경계 체크 및 크기 조정
+        read_width = tile_size
+        read_height = tile_size
+        
+        if x_pos + read_width > slide.dimensions[0]:
+            read_width = slide.dimensions[0] - x_pos
+        if y_pos + read_height > slide.dimensions[1]:
+            read_height = slide.dimensions[1] - y_pos
+            
+        if read_width <= 0 or read_height <= 0:
+            return jsonify({'error': 'Invalid tile coordinates'}), 400
+
         # 타일 읽기
-        tile = slide.read_region((x_pos, y_pos), level, (2048, 2048))
+        tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
         tile = tile.convert('RGB')
+
+        # 크기가 다른 경우 리사이즈
+        if read_width != tile_size or read_height != tile_size:
+            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.BILINEAR)
 
         # JPEG로 변환
         output = io.BytesIO()
