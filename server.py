@@ -211,47 +211,57 @@ def create_tile(slide, level, x, y, tile_size, filename):
     try:
         cache_key = f"{filename}_{level}_{x}_{y}"
         
-        # 메모리 체크 추가
-        check_memory_usage()
-        
         if cache_key in tile_cache:
             return tile_cache[cache_key]
             
-        # 타일 크기 제한
-        max_read_size = 4096  # 최대 읽기 크기 제한
-        factor = slide.level_downsamples[level]
-        x_pos = int(x * tile_size * factor)
-        y_pos = int(y * tile_size * factor)
-        
-        read_size = min(tile_size, max_read_size)
-        read_size = min(read_size, slide.dimensions[0] - x_pos)
-        read_size = min(read_size, slide.dimensions[1] - y_pos)
-        
-        # 타일 읽기 전 메모리 확인
+        # 메모리 체크는 여기서만 수행
+        process = psutil.Process()
         if process.memory_info().rss / 1024 / 1024 / 1024 > MAX_MEMORY_GB * 0.8:
+            print("Memory threshold reached, clearing caches...")
             tile_cache.clear()
             gc.collect()
         
-        tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
-        tile = tile.convert('RGB')
+        # 타일 크기 계산 단순화
+        factor = slide.level_downsamples[level]
+        x_pos = int(x * TILE_SIZE * factor)
+        y_pos = int(y * TILE_SIZE * factor)
         
-        # 이미지 크기 조정이 필요한 경우 점진적으로 처리
-        if read_size != tile_size:
-            intermediate_size = (read_size + tile_size) // 2
-            tile = tile.resize((intermediate_size, intermediate_size), PIL.Image.Resampling.LANCZOS)
-            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
-        
-        # JPEG 품질 낮춰서 메모리 사용량 감소
-        output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
-        output.seek(0)
-        tile = PIL.Image.open(output)
-        
-        tile_cache[cache_key] = tile
-        return tile
-        
+        # 경계 체크
+        if x_pos >= slide.dimensions[0] or y_pos >= slide.dimensions[1]:
+            print(f"Invalid tile coordinates: {x_pos}, {y_pos}")
+            return None
+            
+        # 읽기 크기 계산
+        read_size = TILE_SIZE
+        if x_pos + read_size > slide.dimensions[0]:
+            read_size = slide.dimensions[0] - x_pos
+        if y_pos + read_size > slide.dimensions[1]:
+            read_size = slide.dimensions[1] - y_pos
+            
+        try:
+            # 타일 읽기 시도
+            tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
+            tile = tile.convert('RGB')
+            
+            # 크기 조정이 필요한 경우
+            if read_size != TILE_SIZE:
+                tile = tile.resize((TILE_SIZE, TILE_SIZE), PIL.Image.Resampling.BILINEAR)  # LANCZOS 대신 BILINEAR 사용
+            
+            # 메모리 절약을 위한 JPEG 압축
+            output = io.BytesIO()
+            tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+            output.seek(0)
+            
+            # 캐시에 저장
+            tile_cache[cache_key] = output.getvalue()  # 바이트 데이터로 저장
+            return PIL.Image.open(io.BytesIO(tile_cache[cache_key]))
+            
+        except Exception as inner_e:
+            print(f"Error reading tile: {str(inner_e)}")
+            return None
+            
     except Exception as e:
-        print(f"Error creating tile: {str(e)}")
+        print(f"Error in create_tile: {str(e)}")
         return None
 
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
