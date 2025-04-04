@@ -399,21 +399,27 @@
                 navigatorWidth: "150px",
                 showRotationControl: true,
                 
-                // 타일 로딩 관련 설정 수정
-                timeout: 60000,           // 타임아웃 증가 (30초 -> 60초)
-                loadTilesWithAjax: true,  // AJAX로 타일 로딩
-                maxImageCacheCount: 200,  // 캐시 크기 제한
-                imageLoaderLimit: 3,      // 동시 로딩 수 제한
+                // 초기 뷰 설정 추가
+                defaultZoomLevel: 1,
+                minZoomLevel: 0.1,
+                maxZoomLevel: 10,
+                visibilityRatio: 1,
+                constrainDuringPan: true,
                 
-                // 타일 로딩 우선순위 설정
-                viewportMargins: {
-                    top: 0.5,
-                    left: 0.5,
-                    right: 0.5,
-                    bottom: 0.5
-                },
+                // 이미지 표시 개선
+                homeFillsViewer: true,    // 초기 뷰에서 이미지가 뷰어를 채우도록
+                preserveViewport: true,    // 뷰포트 유지
+                autoResize: true,         // 뷰어 크기 변경 시 자동 조정
                 
-                // 타일 소스 설정
+                // 타일 로딩 설정
+                timeout: 60000,
+                loadTilesWithAjax: true,
+                maxImageCacheCount: 200,
+                imageLoaderLimit: 3,
+                
+                // 타일 크기와 오버랩 설정
+                tileOverlap: 1,
+                
                 tileSources: {
                     type: 'legacy-image-pyramid',
                     width: info.dimensions[0],
@@ -421,28 +427,30 @@
                     tileSize: 2048,
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
-                    overlays: [],           // 오버레이 초기화
-                    compositeOperation: 'source-over',  // 합성 모드
-                    timeout: 180000,        // 타임아웃 증가 (3분)
                     
-                    // 레벨별 타일 크기 조정
-                    getLevelScale: function(level) {
-                        const scale = 1 / info.level_downsamples[level];
-                        return Math.pow(2, Math.floor(Math.log2(scale)));  // 2의 제곱수로 조정
-                    },
+                    // 초기 뷰포트 설정
+                    defaultZoomLevel: 1,
+                    degrees: 0,
+                    
+                    // 타일 URL 생성
                     getTileUrl: function(level, x, y) {
                         const isPublic = window.location.pathname.startsWith('/public/');
                         return isPublic ?
                             `${API_BASE_URL}/public/${filename}/tile/${level}/${x}/${y}` :
                             `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
-                    },
-                    
-                    // 타일 로딩 재시도 설정
-                    retryDelays: [0, 1000, 3000, 5000],  // 재시도 간격
-                    ajaxHeaders: {
-                        'Cache-Control': 'no-cache'
                     }
                 }
+            });
+
+            // 이미지가 완전히 로드된 후 뷰포트 조정
+            viewer.addHandler('open', function() {
+                viewer.viewport.goHome(true);
+                viewer.viewport.fitVertically(true);
+            });
+
+            // 뷰어 크기 변경 시 자동 조정
+            window.addEventListener('resize', function() {
+                viewer.viewport.goHome(true);
             });
 
             // SVG 오버레이 초기화
