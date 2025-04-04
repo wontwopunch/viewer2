@@ -394,59 +394,45 @@
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 showNavigator: true,
-                navigatorPosition: "BOTTOM_RIGHT",
-                navigatorHeight: "150px",
-                navigatorWidth: "150px",
-                showRotationControl: true,
                 
-                // 타일 소스 설정
+                // 기본 설정만 유지
                 tileSources: {
                     type: 'legacy-image-pyramid',
-                    width: info.dimensions[0],      // 원래 순서대로 복원
-                    height: info.dimensions[1],     // 원래 순서대로 복원
+                    width: info.dimensions[0],
+                    height: info.dimensions[1],
                     tileSize: 2048,
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
                     
+                    // 타일 URL 생성 단순화
                     getTileUrl: function(level, x, y) {
-                        const isPublic = window.location.pathname.startsWith('/public/');
-                        return isPublic ?
-                            `${API_BASE_URL}/public/${filename}/tile/${level}/${x}/${y}` :
-                            `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                        return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
                     }
                 },
                 
-                // 뷰어 기본 설정
-                showFullPageControl: false,
-                preserveViewport: false,
-                visibilityRatio: 0.9,
-                minZoomLevel: 0.5,
-                maxZoomLevel: 10,
+                // 기본 설정
                 defaultZoomLevel: 1,
+                minZoomLevel: 0.1,
+                maxZoomLevel: 10,
                 
                 // 성능 설정
-                imageLoaderLimit: 10,
-                maxImageCacheCount: 500,
-                timeout: 120000,
-                
-                // 렌더링 설정
-                immediateRender: false,
-                blendTime: 0.1,
-                alwaysBlend: false,
-                
-                // 디버그 모드 비활성화
-                debugMode: false
+                imageLoaderLimit: 3,
+                maxImageCacheCount: 200
             });
 
-            // 초기 뷰포트 설정
-            viewer.addHandler('open', function() {
+            // 디버그를 위한 이벤트 핸들러
+            viewer.addHandler('open', function(event) {
+                console.log('Viewer opened:', event);
+                console.log('Image size:', info.dimensions);
                 viewer.viewport.goHome();
             });
 
-            // 타일 로딩 에러 처리
+            viewer.addHandler('tile-loaded', function(event) {
+                console.log('Tile loaded:', event.tile.level, event.tile.x, event.tile.y);
+            });
+
             viewer.addHandler('tile-load-failed', function(event) {
-                console.warn('Tile load failed:', event);
-                event.tile.retry(); // 실패한 타일 다시 시도
+                console.error('Tile load failed:', event.tile.level, event.tile.x, event.tile.y);
             });
 
             // 뷰어 크기 변경 시 자동 조정
