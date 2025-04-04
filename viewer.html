@@ -396,36 +396,21 @@
                 navigatorWidth: "150px",
                 showRotationControl: true,
                 
-                // 타일 로딩 최적화 수정
-                imageLoaderLimit: 4,        // 약간 증가
-                placeholderFillStyle: "#000",
-                immediateRender: true,
-                blendTime: 0,
-                alwaysBlend: false,
+                // 타일 로딩 관련 설정 수정
+                timeout: 60000,           // 타임아웃 증가 (30초 -> 60초)
+                loadTilesWithAjax: true,  // AJAX로 타일 로딩
+                maxImageCacheCount: 200,  // 캐시 크기 제한
+                imageLoaderLimit: 3,      // 동시 로딩 수 제한
                 
-                // 타일 로딩 순서 개선
+                // 타일 로딩 우선순위 설정
                 viewportMargins: {
-                    top: 1,
-                    left: 1,
-                    right: 1,
-                    bottom: 1
+                    top: 0.5,
+                    left: 0.5,
+                    right: 0.5,
+                    bottom: 0.5
                 },
                 
-                // 메모리 관리 개선
-                maxImageCacheCount: 400,    // 캐시 크기 증가
-                minZoomImageRatio: 0.9,
-                maxZoomPixelRatio: 1.1,    // 줌 비율 제한
-                
-                // 타일 오버랩 증가
-                tileOverlap: 2,            // 타일 간 겹침 증가
-                
-                // 추가 설정
-                preserveViewport: true,     // 뷰포트 유지
-                visibilityRatio: 0.5,      // 가시성 비율
-                springStiffness: 7.0,      // 스프링 효과
-                animationTime: 0.5,        // 애니메이션 시간
-                
-                // 타일 소스 설정 수정
+                // 타일 소스 설정
                 tileSources: {
                     type: 'legacy-image-pyramid',
                     width: info.dimensions[0],
@@ -447,6 +432,12 @@
                         return isPublic ?
                             `${API_BASE_URL}/public/${filename}/tile/${level}/${x}/${y}` :
                             `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                    },
+                    
+                    // 타일 로딩 재시도 설정
+                    retryDelays: [0, 1000, 3000, 5000],  // 재시도 간격
+                    ajaxHeaders: {
+                        'Cache-Control': 'no-cache'
                     }
                 }
             });
@@ -483,6 +474,13 @@
                 if (event.tile.loading) {
                     event.tile.loading = false;
                 }
+            });
+            
+            // 타일 로딩 이벤트 핸들러 추가
+            viewer.addHandler('tile-load-failed', function(event) {
+                console.warn(`Tile ${event.tile.level}/${event.tile.x}_${event.tile.y} failed to load - retrying...`);
+                // 타일 다시 로드 시도
+                event.tile.reload();
             });
             
         }).catch(error => {
