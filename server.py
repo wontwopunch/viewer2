@@ -48,8 +48,8 @@ ALLOWED_PATHS = [
     r'^/viewer\.html$',
     r'^/dashboard\.html$',
     r'^/files$',
-    r'^/files/.*$',  # files 엔드포인트 추가
-    r'^/upload$'
+    r'^/files/.*$',
+    r'^/upload$',  # upload 경로 추가 확인
 ]
 
 @app.before_request
@@ -142,23 +142,23 @@ def upload_file():
         if file and file.filename.endswith('.svs'):
             filename = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filename)
-            print(f'File saved to: {filename}')
+            print(f'File saved to: {filename}')  # 디버그 로그 추가
             return jsonify({'message': '파일이 업로드되었습니다', 'filename': file.filename})
         
         return jsonify({'error': 'SVS 파일만 업로드 가능합니다'}), 400
     except Exception as e:
-        print(f'Upload error: {str(e)}')
+        print(f'Upload error: {str(e)}')  # 디버그 로그 추가
         return jsonify({'error': str(e)}), 500
 
 # 타일 크기와 품질 상수 정의
-TILE_SIZE = 2048
-JPEG_QUALITY = 60
-MAX_WORKERS = 16
+TILE_SIZE = 1024
+JPEG_QUALITY = 50
+MAX_WORKERS = 8
 
 # 스레드 풀과 캐시 설정 조정
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
-slide_cache = TTLCache(maxsize=10, ttl=7200)
-tile_cache = TTLCache(maxsize=2000, ttl=3600)
+slide_cache = TTLCache(maxsize=3, ttl=1800)
+tile_cache = TTLCache(maxsize=500, ttl=900)
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -175,57 +175,78 @@ def get_slide(slide_path):
         slide_cache[slide_path] = openslide.OpenSlide(slide_path)
     return slide_cache[slide_path]
 
-# 메모리 관리 상수
-MAX_MEMORY_GB = 6.0  # 8GB 중 6GB까지 사용
-GC_INTERVAL = 300    # 가비지 컬렉션 간격 늘림
+# 메모리 관리 상수 수정
+MAX_MEMORY_GB = 4.0  # 6GB에서 4GB로 감소
+GC_INTERVAL = 60     # 300초에서 60초로 감소
 
 def check_memory_usage():
-    process = psutil.Process()
-    memory_gb = process.memory_info().rss / 1024 / 1024 / 1024
-    
-    if memory_gb > MAX_MEMORY_GB:
-        print(f"Memory usage ({memory_gb:.2f}GB) exceeded limit. Clearing caches...")
-        tile_cache.clear()
-        gc.collect()
+    try:
+        process = psutil.Process()
+        memory_gb = process.memory_info().rss / 1024 / 1024 / 1024
+        
+        if memory_gb > MAX_MEMORY_GB:
+            print(f"Memory usage ({memory_gb:.2f}GB) exceeded limit. Clearing caches...")
+            tile_cache.clear()
+            
+            # 슬라이드 캐시도 정리
+            for key in list(slide_cache.keys()):
+                slide = slide_cache[key]
+                slide.close()  # OpenSlide 객체 닫기
+                del slide_cache[key]
+            
+            gc.collect()
+            print(f"Memory after cleanup: {process.memory_info().rss / 1024 / 1024 / 1024:.2f}GB")
+    except Exception as e:
+        print(f"Error in memory check: {str(e)}")
 
-# 주기적으로 메모리 체크
-Timer(GC_INTERVAL, check_memory_usage).start()
+# 주기적 메모리 체크 함수
+def periodic_memory_check():
+    check_memory_usage()
+    Timer(GC_INTERVAL, periodic_memory_check).start()
+
+# 메모리 체크 시작
+periodic_memory_check()
 
 def create_tile(slide, level, x, y, tile_size, filename):
     try:
         cache_key = f"{filename}_{level}_{x}_{y}"
         
+        # 메모리 체크 추가
+        check_memory_usage()
+        
         if cache_key in tile_cache:
             return tile_cache[cache_key]
-        
-        # 타일 경계 계산 개선
+            
+        # 타일 크기 제한
+        max_read_size = 4096  # 최대 읽기 크기 제한
         factor = slide.level_downsamples[level]
         x_pos = int(x * tile_size * factor)
         y_pos = int(y * tile_size * factor)
         
-        # 타일 크기 계산 개선
-        read_size = tile_size
-        if x_pos + read_size > slide.dimensions[0]:
-            read_size = slide.dimensions[0] - x_pos
-        if y_pos + read_size > slide.dimensions[1]:
-            read_size = slide.dimensions[1] - y_pos
-            
-        # 패딩 추가
-        padding = 2  # 2픽셀 패딩
-        x_pos = max(0, x_pos - padding)
-        y_pos = max(0, y_pos - padding)
-        read_size = min(slide.dimensions[0] - x_pos, read_size + 2 * padding)
-        read_size = min(slide.dimensions[1] - y_pos, read_size + 2 * padding)
+        read_size = min(tile_size, max_read_size)
+        read_size = min(read_size, slide.dimensions[0] - x_pos)
+        read_size = min(read_size, slide.dimensions[1] - y_pos)
         
-        # 타일 읽기
+        # 타일 읽기 전 메모리 확인
+        if process.memory_info().rss / 1024 / 1024 / 1024 > MAX_MEMORY_GB * 0.8:
+            tile_cache.clear()
+            gc.collect()
+        
         tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
         tile = tile.convert('RGB')
         
-        # 크기 조정이 필요한 경우
+        # 이미지 크기 조정이 필요한 경우 점진적으로 처리
         if read_size != tile_size:
+            intermediate_size = (read_size + tile_size) // 2
+            tile = tile.resize((intermediate_size, intermediate_size), PIL.Image.Resampling.LANCZOS)
             tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.LANCZOS)
         
-        # 캐시 저장
+        # JPEG 품질 낮춰서 메모리 사용량 감소
+        output = io.BytesIO()
+        tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+        output.seek(0)
+        tile = PIL.Image.open(output)
+        
         tile_cache[cache_key] = tile
         return tile
         
