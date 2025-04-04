@@ -399,38 +399,48 @@
                 navigatorWidth: "150px",
                 showRotationControl: true,
                 
-                // 기본 설정 단순화
-                defaultZoomLevel: 0,
-                minZoomLevel: 0,
-                maxZoomLevel: 10,
-                
-                // 타일 설정 단순화
-                tileSize: 2048,
-                maxImageCacheCount: 100,
-                imageLoaderLimit: 4,
-                
-                // 이미지 표시 설정
-                immediateRender: true,
-                blendTime: 0,
-                alwaysBlend: false,
-                
+                // 타일 소스 설정 수정
                 tileSources: {
+                    type: 'legacy-image-pyramid',  // 타입 명시적 지정
+                    width: info.dimensions[1],     // width와 height가 반대로 되어있었음
                     height: info.dimensions[0],
-                    width: info.dimensions[1],
                     tileSize: 2048,
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
                     
+                    // 뷰어 설정 추가
+                    compositeOperation: 'source-over',
+                    
                     getTileUrl: function(level, x, y) {
-                        console.log(`Requesting tile: level=${level}, x=${x}, y=${y}`); // 디버그 로그 추가
+                        console.log(`Requesting tile: level=${level}, x=${x}, y=${y}`);
                         const isPublic = window.location.pathname.startsWith('/public/');
                         const url = isPublic ?
                             `${API_BASE_URL}/public/${filename}/tile/${level}/${x}/${y}` :
                             `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
-                        console.log('Tile URL:', url); // 디버그 로그 추가
+                        console.log('Tile URL:', url);
                         return url;
                     }
-                }
+                },
+                
+                // 뷰어 동작 설정
+                visibilityRatio: 1,
+                constrainDuringPan: true,
+                blendTime: 0,
+                alwaysBlend: false,
+                minZoomImageRatio: 0.5,
+                maxZoomPixelRatio: 2,
+                
+                // 초기 뷰 설정
+                defaultZoomLevel: 0,
+                homeFillsViewer: true,
+                
+                // 성능 설정
+                imageLoaderLimit: 5,
+                maxImageCacheCount: 250,
+                timeout: 60000,
+                
+                // 디버그 모드 활성화
+                debugMode: true
             });
 
             // 디버그 이벤트 핸들러 추가
