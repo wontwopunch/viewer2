@@ -386,6 +386,9 @@
         getSlideInfo(filename).then(info => {
             console.log('Slide info received:', info);
             
+            // 로딩 오버레이 숨기기
+            document.getElementById('loadingOverlay').style.display = 'none';
+            
             // OpenSeadragon 뷰어 초기화
             const viewer = OpenSeadragon({
                 id: "viewer",
@@ -463,28 +466,35 @@
                 console.warn('Annotation tools disabled - SVG Overlay not available');
             }
             
-            // 타일 로딩 이벤트 처리 추가
-            viewer.addHandler('tile-loaded', function(event) {
-                // 타일 로드 완료 시 처리
-                event.tiledImage.lastTouchTime = Date.now();
+            // 타일 로딩 진행률 표시
+            let loadedTiles = 0;
+            let totalTiles = 0;
+
+            viewer.addHandler('tile-loading', function() {
+                totalTiles++;
+                updateLoadingProgress();
             });
 
-            viewer.addHandler('tile-drawing', function(event) {
-                // 타일 그리기 시작 시 처리
-                if (event.tile.loading) {
-                    event.tile.loading = false;
+            viewer.addHandler('tile-loaded', function() {
+                loadedTiles++;
+                updateLoadingProgress();
+                
+                // 모든 타일이 로드되면 로딩 표시 숨기기
+                if (loadedTiles === totalTiles) {
+                    document.getElementById('loadingOverlay').style.display = 'none';
                 }
             });
-            
-            // 타일 로딩 이벤트 핸들러 추가
-            viewer.addHandler('tile-load-failed', function(event) {
-                console.warn(`Tile ${event.tile.level}/${event.tile.x}_${event.tile.y} failed to load - retrying...`);
-                // 타일 다시 로드 시도
-                event.tile.reload();
-            });
-            
+
+            function updateLoadingProgress() {
+                const progress = Math.round((loadedTiles / totalTiles) * 100);
+                document.getElementById('loadingProgress').textContent = 
+                    `로딩 진행률: ${progress}% (${loadedTiles}/${totalTiles})`;
+            }
+
         }).catch(error => {
             console.error('Error loading slide info:', error);
+            // 에러 발생 시에도 로딩 오버레이 숨기기
+            document.getElementById('loadingOverlay').style.display = 'none';
             alert('슬라이드 정보를 불러오는데 실패했습니다.');
         });
 
