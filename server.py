@@ -150,15 +150,15 @@ def upload_file():
         print(f'Upload error: {str(e)}')  # 디버그 로그 추가
         return jsonify({'error': str(e)}), 500
 
-# 타일 크기와 품질 상수 정의
-TILE_SIZE = 1024
-JPEG_QUALITY = 50
-MAX_WORKERS = 8
+# 타일 크기와 품질 상수 수정
+TILE_SIZE = 512  # 1024에서 512로 더 감소
+JPEG_QUALITY = 40  # 50에서 40으로 감소
+MAX_WORKERS = 4   # 8에서 4로 감소
 
 # 스레드 풀과 캐시 설정 조정
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
-slide_cache = TTLCache(maxsize=3, ttl=1800)
-tile_cache = TTLCache(maxsize=500, ttl=900)
+slide_cache = TTLCache(maxsize=2, ttl=900)    # 더 작게
+tile_cache = TTLCache(maxsize=200, ttl=600)   # 더 작게
 
 TILE_CACHE_DIR = 'tile_cache'
 if not os.path.exists(TILE_CACHE_DIR):
@@ -264,51 +264,87 @@ def create_tile(slide, level, x, y, tile_size, filename):
         print(f"Error in create_tile: {str(e)}")
         return None
 
+# 로딩 상태 추적을 위한 변수 추가
+loading_tiles = set()
+
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        # 캐시 키 생성
-        cache_key = f"{filename}_{level}_{x}_{y}"
+        print(f"Tile request: filename={filename}, level={level}, x={x}, y={y}")  # 디버그 로그 추가
         
-        # 캐시된 타일이 있으면 바로 반환
-        if cache_key in tile_cache:
-            output = io.BytesIO()
-            tile_cache[cache_key].save(output, format='JPEG', quality=JPEG_QUALITY)
-            output.seek(0)
-            response = make_response(send_file(
-                output,
-                mimetype='image/jpeg',
-                as_attachment=False
-            ))
-            response.headers['Cache-Control'] = 'public, max-age=3600'
-            return response
-            
-        # 슬라이드 가져오기
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        if slide_path not in slide_cache:
-            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
-        slide = slide_cache[slide_path]
+        print(f"Slide path: {slide_path}")  # 디버그 로그 추가
         
-        # 타일 생성
-        tile = create_tile(slide, level, x, y, TILE_SIZE, filename)
-        if tile is None:
-            return jsonify({'error': 'Failed to create tile'}), 500
+        if not os.path.exists(slide_path):
+            print(f"Slide file not found: {slide_path}")  # 디버그 로그 추가
+            return jsonify({'error': 'Slide file not found'}), 404
             
-        # 응답 생성
-        output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=JPEG_QUALITY)
-        output.seek(0)
+        tile_id = f"{filename}_{level}_{x}_{y}"
         
-        response = make_response(send_file(
-            output,
-            mimetype='image/jpeg',
-            as_attachment=False
-        ))
-        response.headers['Cache-Control'] = 'public, max-age=3600'
-        return response
+        # 이미 로딩 중인 타일은 건너뛰기
+        if tile_id in loading_tiles:
+            return jsonify({'status': 'loading'}), 202
+            
+        loading_tiles.add(tile_id)
         
+        try:
+            # 캐시 확인
+            if tile_id in tile_cache:
+                loading_tiles.remove(tile_id)
+                return send_file(
+                    io.BytesIO(tile_cache[tile_id]),
+                    mimetype='image/jpeg'
+                )
+            
+            # 메모리 체크
+            process = psutil.Process()
+            if process.memory_info().rss / 1024 / 1024 / 1024 > MAX_MEMORY_GB * 0.8:
+                tile_cache.clear()
+                gc.collect()
+            
+            # 슬라이드 가져오기
+            if slide_path not in slide_cache:
+                slide_cache[slide_path] = openslide.OpenSlide(slide_path)
+            slide = slide_cache[slide_path]
+            
+            # 타일 생성
+            factor = slide.level_downsamples[level]
+            x_pos = int(x * TILE_SIZE * factor)
+            y_pos = int(y * TILE_SIZE * factor)
+            
+            # 경계 체크
+            if x_pos >= slide.dimensions[0] or y_pos >= slide.dimensions[1]:
+                loading_tiles.remove(tile_id)
+                return jsonify({'error': 'Invalid coordinates'}), 400
+            
+            # 타일 읽기
+            read_size = min(TILE_SIZE, slide.dimensions[0] - x_pos, slide.dimensions[1] - y_pos)
+            tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
+            tile = tile.convert('RGB')
+            
+            if read_size != TILE_SIZE:
+                tile = tile.resize((TILE_SIZE, TILE_SIZE), PIL.Image.Resampling.NEAREST)  # 가장 빠른 리샘플링
+            
+            # JPEG 압축
+            output = io.BytesIO()
+            tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+            jpeg_data = output.getvalue()
+            
+            # 캐시 저장
+            tile_cache[tile_id] = jpeg_data
+            
+            loading_tiles.remove(tile_id)
+            return send_file(
+                io.BytesIO(jpeg_data),
+                mimetype='image/jpeg'
+            )
+            
+        except Exception as e:
+            loading_tiles.remove(tile_id)
+            raise e
+            
     except Exception as e:
-        print(f"Error in get_tile: {str(e)}")
+        print(f"Error in get_tile: {str(e)}")  # 디버그 로그 추가
         return jsonify({'error': str(e)}), 500
 
 def load_public_files():
