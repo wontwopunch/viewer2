@@ -279,38 +279,47 @@ def get_tile(filename, level, x, y):
 
         # OpenSlide 객체 가져오기
         if slide_path not in slide_cache:
-            print(f"Creating new slide object for {slide_path}")  # 디버그 로그
+            print(f"Creating new slide object for {slide_path}")
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
-
-        # 슬라이드 크기 확인
-        print(f"Slide dimensions: {slide.dimensions}")  # 디버그 로그
-        print(f"Level count: {slide.level_count}")  # 디버그 로그
-        print(f"Level dimensions: {slide.level_dimensions}")  # 디버그 로그
-        print(f"Level downsamples: {slide.level_downsamples}")  # 디버그 로그
 
         # 타일 위치 계산
         level_downsample = slide.level_downsamples[level]
         x_pos = int(x * TILE_SIZE * level_downsample)
         y_pos = int(y * TILE_SIZE * level_downsample)
 
-        print(f"Reading region at: pos=({x_pos}, {y_pos}), level={level}, size={TILE_SIZE}")  # 디버그 로그
+        print(f"Reading region at: pos=({x_pos}, {y_pos}), level={level}, size={TILE_SIZE}")
 
-        # 타일 읽기
-        tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
-        print(f"Tile mode: {tile.mode}, size: {tile.size}")  # 이미지 정보 출력
-        
-        tile = tile.convert('RGB')
-        print(f"Converted tile mode: {tile.mode}")  # 변환 후 이미지 정보
-        
-        # JPEG로 변환
-        output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=90)
-        output_size = len(output.getvalue())
-        print(f"JPEG size: {output_size} bytes")  # JPEG 크기 확인
-        
-        output.seek(0)
-        return send_file(output, mimetype='image/jpeg')
+        try:
+            # 타일 읽기
+            tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
+            print(f"Original tile mode: {tile.mode}, size: {tile.size}")
+
+            # RGBA에서 RGB로 변환
+            tile = tile.convert('RGB')
+            print(f"Converted tile mode: {tile.mode}")
+
+            # JPEG로 변환
+            output = io.BytesIO()
+            tile.save(output, format='JPEG', quality=90, optimize=True)
+            output_size = len(output.getvalue())
+            print(f"JPEG size: {output_size} bytes")
+
+            # 응답 헤더 설정
+            output.seek(0)
+            response = send_file(
+                output,
+                mimetype='image/jpeg',
+                as_attachment=False
+            )
+            response.headers['Cache-Control'] = 'public, max-age=31536000'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            print(f"Sending tile response: {response.status_code}")
+            return response
+
+        except Exception as inner_e:
+            print(f"Error processing tile: {str(inner_e)}")
+            return jsonify({'error': 'Failed to process tile'}), 500
 
     except Exception as e:
         print(f"Error in get_tile: {str(e)}")
