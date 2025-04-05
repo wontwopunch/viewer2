@@ -270,56 +270,83 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        print(f"\n=== Processing tile request ===")
-        print(f"Filename: {filename}")
-        print(f"Level: {level}, X: {x}, Y: {y}")
+        # 타일 캐시 키 생성
+        cache_key = f"{filename}_{level}_{x}_{y}"
         
+        # 캐시 확인
+        if cache_key in tile_cache:
+            response = make_response(tile_cache[cache_key])
+            response.headers.set('Content-Type', 'image/jpeg')
+            response.headers.set('Cache-Control', 'public, max-age=31536000')
+            return response
+        
+        # 메모리 체크
+        process = psutil.Process()
+        if process.memory_info().rss / 1024 / 1024 / 1024 > MAX_MEMORY_GB * 0.9:
+            tile_cache.clear()
+            gc.collect()
+        
+        # 파일 경로 확인
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        print(f"Full slide path: {slide_path}")
-        
         if not os.path.exists(slide_path):
-            print(f"Error: Slide file not found at {slide_path}")
             return jsonify({'error': 'Slide not found'}), 404
 
         # OpenSlide 객체 가져오기
         if slide_path not in slide_cache:
-            print("Creating new OpenSlide object")
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
-        # 슬라이드 정보 출력
-        print(f"Slide dimensions: {slide.dimensions}")
-        print(f"Level count: {slide.level_count}")
-
-        # 타일 위치 계산
+        # 타일 위치 계산 (수정된 부분)
         level_downsample = slide.level_downsamples[level]
-        x_pos = int(x * TILE_SIZE * level_downsample)
-        y_pos = int(y * TILE_SIZE * level_downsample)
-        print(f"Reading region at: ({x_pos}, {y_pos}), level={level}")
-
-        # 타일 읽기
-        tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
-        print(f"Read tile: mode={tile.mode}, size={tile.size}")
-
-        # RGBA에서 RGB로 변환
-        tile = tile.convert('RGB')
-
-        # JPEG로 변환 및 응답
-        response = make_response()
-        output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=90)
-        output.seek(0)
+        x_pos = int(x * TILE_SIZE)  # 타일 크기만 곱하기
+        y_pos = int(y * TILE_SIZE)  # 타일 크기만 곱하기
         
-        response.data = output.getvalue()
-        response.headers.set('Content-Type', 'image/jpeg')
-        response.headers.set('Cache-Control', 'public, max-age=31536000')
-        print("Sending tile response")
-        return response
+        # 위치 조정 (level에 따라)
+        if level > 0:
+            # 하위 레벨에서는 다운샘플링 적용
+            x_pos = int(x_pos * level_downsample)
+            y_pos = int(y_pos * level_downsample)
+        
+        # 타일 읽기
+        try:
+            # 경계 체크
+            tile_size = min(TILE_SIZE, slide.dimensions[0] - x_pos, slide.dimensions[1] - y_pos)
+            if tile_size <= 0:
+                # 빈 타일 생성
+                tile = PIL.Image.new('RGB', (TILE_SIZE, TILE_SIZE), (255, 255, 255))
+            else:
+                # 실제 타일 읽기
+                tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
+                tile = tile.convert('RGB')
+            
+            # JPEG로 변환
+            output = io.BytesIO()
+            tile.save(output, format='JPEG', quality=90)
+            output.seek(0)
+            jpeg_data = output.getvalue()
+            
+            # 캐시에 저장
+            tile_cache[cache_key] = jpeg_data
+            
+            # 응답 반환
+            response = make_response(jpeg_data)
+            response.headers.set('Content-Type', 'image/jpeg')
+            response.headers.set('Cache-Control', 'public, max-age=31536000')
+            return response
+            
+        except Exception as inner_e:
+            print(f"Error processing tile: {str(inner_e)}")
+            # 에러 발생 시 빈 타일 반환
+            blank = PIL.Image.new('RGB', (TILE_SIZE, TILE_SIZE), (200, 200, 200))
+            output = io.BytesIO()
+            blank.save(output, format='JPEG')
+            output.seek(0)
+            response = make_response(output.getvalue())
+            response.headers.set('Content-Type', 'image/jpeg')
+            return response
 
     except Exception as e:
         print(f"Error in get_tile: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 def load_public_files():
@@ -617,8 +644,13 @@ def favicon():
     return send_from_directory(STATIC_FOLDER, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == '__main__':
-    # 프로세스 수를 1로 제한하고 스레드 사용
-    app.run(host='0.0.0.0', 
-           port=5000, 
-           threaded=True, 
-           processes=1)
+    # 디렉터리 확인 및 생성
+    for directory in [UPLOAD_FOLDER, DATA_FOLDER, TILE_CACHE_DIR]:
+        os.makedirs(directory, exist_ok=True)
+    
+    # 공개 파일 로드
+    public_files = load_public_files()
+    print(f"Initial public files state: {public_files}")
+    
+    # 디버그 모드에서 실행 (개발 중에만)
+    app.run(host='0.0.0.0', port=5000, debug=True)
