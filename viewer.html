@@ -391,6 +391,7 @@
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 showNavigator: true,
+                navigatorPosition: "BOTTOM_RIGHT",
                 
                 tileSources: {
                     type: 'legacy-image-pyramid',
@@ -404,28 +405,52 @@
                     }
                 },
                 
+                // 기본 설정
                 defaultZoomLevel: 1,
                 minZoomLevel: 0.1,
                 maxZoomLevel: 10,
-                immediateRender: true
+                
+                // 렌더링 설정
+                immediateRender: true,
+                blendTime: 0,
+                alwaysBlend: false,
+                placeholderFillStyle: "#000",
+                
+                // 뷰포트 설정
+                visibilityRatio: 0.9,
+                constrainDuringPan: true,
+                
+                // 성능 설정
+                imageLoaderLimit: 5,
+                maxImageCacheCount: 200,
+                timeout: 60000
             });
 
-            // 초기화 후 뷰포트 설정
+            // 이미지 로드 완료 후 처리
             viewer.addHandler('open', function() {
-                viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, info.dimensions[1] / info.dimensions[0]));
-                viewer.viewport.minZoomLevel = viewer.viewport.imageToViewportZoom(0.8);
+                // 전체 이미지가 보이도록 조정
+                viewer.viewport.goHome();
             });
 
-            // 타일 로딩 모니터링
+            // 타일 로딩 상태 모니터링
             viewer.addHandler('tile-loaded', function(event) {
                 console.log(`Tile loaded: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
-                viewer.drawer.needsUpdate = true;  // 화면 갱신 강제
-                viewer.forceRedraw();  // 강제 다시 그리기
+                // 타일이 로드될 때마다 화면 갱신
+                viewer.forceRedraw();
             });
 
-            // 이벤트 핸들러
+            // 에러 처리
             viewer.addHandler('tile-load-failed', function(event) {
                 console.error('Tile load failed:', event);
+                // 실패한 타일 다시 시도
+                setTimeout(() => event.tile.retry(), 1000);
+            });
+
+            // 디버그용 이벤트 핸들러
+            viewer.addHandler('canvas-click', function(event) {
+                console.log('Canvas clicked:', event);
+                console.log('Current zoom:', viewer.viewport.getZoom());
+                console.log('Current bounds:', viewer.viewport.getBounds());
             });
 
             // 초기 로딩 완료 후

@@ -270,7 +270,7 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        print(f"Processing tile request: level={level}, x={x}, y={y}")  # 디버그 로그
+        print(f"Processing tile request: level={level}, x={x}, y={y}")
         
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
         if not os.path.exists(slide_path):
@@ -298,26 +298,22 @@ def get_tile(filename, level, x, y):
 
         # 타일 읽기
         tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
+        print(f"Tile mode: {tile.mode}, size: {tile.size}")  # 이미지 정보 출력
+        
         tile = tile.convert('RGB')
-
+        print(f"Converted tile mode: {tile.mode}")  # 변환 후 이미지 정보
+        
         # JPEG로 변환
         output = io.BytesIO()
         tile.save(output, format='JPEG', quality=90)
+        output_size = len(output.getvalue())
+        print(f"JPEG size: {output_size} bytes")  # JPEG 크기 확인
+        
         output.seek(0)
-
-        response = send_file(
-            output,
-            mimetype='image/jpeg',
-            as_attachment=False
-        )
-        response.headers['Cache-Control'] = 'public, max-age=31536000'
-        return response
+        return send_file(output, mimetype='image/jpeg')
 
     except Exception as e:
-        print(f"Error in get_tile: {str(e)}")  # 에러 로그
-        print(f"Error details: {type(e).__name__}")  # 에러 타입
-        import traceback
-        print(traceback.format_exc())  # 스택 트레이스
+        print(f"Error in get_tile: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 def load_public_files():
