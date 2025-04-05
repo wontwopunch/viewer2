@@ -384,10 +384,7 @@
 
         // 슬라이드 정보를 가져온 후 뷰어 초기화
         getSlideInfo(filename).then(info => {
-            console.log('Slide info received:', info);
-            
-            // 로딩 오버레이 숨기기
-            document.getElementById('loadingOverlay').style.display = 'none';
+            console.log('Slide info received:', info);  // 슬라이드 정보 확인
             
             // OpenSeadragon 뷰어 초기화
             const viewer = OpenSeadragon({
@@ -395,7 +392,7 @@
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 showNavigator: true,
                 
-                // 기본 설정만 유지
+                // 기본 설정
                 tileSources: {
                     type: 'legacy-image-pyramid',
                     width: info.dimensions[0],
@@ -404,93 +401,60 @@
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
                     
-                    // 타일 URL 생성 단순화
                     getTileUrl: function(level, x, y) {
-                        return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                        const url = `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                        console.log(`Requesting tile: level=${level}, x=${x}, y=${y}, url=${url}`);
+                        return url;
                     }
                 },
                 
-                // 기본 설정
-                defaultZoomLevel: 1,
-                minZoomLevel: 0.1,
+                // 뷰어 설정
+                showFullPageControl: false,
+                defaultZoomLevel: 0,
+                minZoomLevel: 0,
                 maxZoomLevel: 10,
                 
                 // 성능 설정
-                imageLoaderLimit: 3,
-                maxImageCacheCount: 200
+                imageLoaderLimit: 10,
+                maxImageCacheCount: 200,
+                timeout: 60000,
+                
+                // 디버그 모드 활성화
+                debugMode: true,
+                
+                // 추가 설정
+                visibilityRatio: 1,
+                constrainDuringPan: true,
+                homeFillsViewer: true
             });
 
-            // 디버그를 위한 이벤트 핸들러
+            // 이벤트 핸들러
             viewer.addHandler('open', function(event) {
-                console.log('Viewer opened:', event);
-                console.log('Image size:', info.dimensions);
+                console.log('Viewer opened');
                 viewer.viewport.goHome();
             });
 
             viewer.addHandler('tile-loaded', function(event) {
-                console.log('Tile loaded:', event.tile.level, event.tile.x, event.tile.y);
+                console.log(`Tile loaded: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
             });
 
             viewer.addHandler('tile-load-failed', function(event) {
-                console.error('Tile load failed:', event.tile.level, event.tile.x, event.tile.y);
+                console.error(`Tile load failed: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
+                // 실패한 타일 다시 시도
+                setTimeout(() => {
+                    event.tile.retry();
+                }, 1000);
             });
 
-            // 뷰어 크기 변경 시 자동 조정
-            window.addEventListener('resize', function() {
+            // 초기 로딩 완료 후
+            viewer.world.addHandler('add-item', function() {
+                console.log('Item added to world');
                 viewer.viewport.goHome(true);
             });
 
-            // SVG 오버레이 초기화
-            try {
-                if (typeof OpenSeadragon.Overlay !== 'undefined' && typeof OpenSeadragon.Overlay.SVG !== 'undefined') {
-                    const overlay = viewer.svgOverlay();
-                    console.log('SVG Overlay initialized successfully');
-                    
-                    // 어노테이션 도구 초기화
-                    let isDrawing = false;
-                    let startPoint = null;
-                    let currentRect = null;
-                    
-                    // 여기에 어노테이션 관련 코드 추가
-                    
-                } else {
-                    console.warn('SVG Overlay plugin not available - continuing without annotation support');
-                }
-            } catch (e) {
-                console.error('Error initializing SVG Overlay:', e);
-                console.warn('Annotation tools disabled - SVG Overlay not available');
-            }
-            
-            // 타일 로딩 진행률 표시
-            let loadedTiles = 0;
-            let totalTiles = 0;
-
-            viewer.addHandler('tile-loading', function() {
-                totalTiles++;
-                updateLoadingProgress();
-            });
-
-            viewer.addHandler('tile-loaded', function() {
-                loadedTiles++;
-                updateLoadingProgress();
-                
-                // 모든 타일이 로드되면 로딩 표시 숨기기
-                if (loadedTiles === totalTiles) {
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                }
-            });
-
-            function updateLoadingProgress() {
-                const progress = Math.round((loadedTiles / totalTiles) * 100);
-                document.getElementById('loadingProgress').textContent = 
-                    `로딩 진행률: ${progress}% (${loadedTiles}/${totalTiles})`;
-            }
-
         }).catch(error => {
-            console.error('Error loading slide info:', error);
-            // 에러 발생 시에도 로딩 오버레이 숨기기
-            document.getElementById('loadingOverlay').style.display = 'none';
-            alert('슬라이드 정보를 불러오는데 실패했습니다.');
+            console.error('Error:', error);
+            alert('이미지 로딩에 실패했습니다.');
         });
 
         // 메모와 어노테이션 관련 함수들...
