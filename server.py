@@ -290,42 +290,31 @@ def get_tile(filename, level, x, y):
         # 슬라이드 정보 출력
         print(f"Slide dimensions: {slide.dimensions}")
         print(f"Level count: {slide.level_count}")
-        print(f"Level dimensions: {slide.level_dimensions}")
 
         # 타일 위치 계산
         level_downsample = slide.level_downsamples[level]
         x_pos = int(x * TILE_SIZE * level_downsample)
         y_pos = int(y * TILE_SIZE * level_downsample)
-        print(f"Calculated position: ({x_pos}, {y_pos})")
+        print(f"Reading region at: ({x_pos}, {y_pos}), level={level}")
 
-        try:
-            print("Reading tile region...")
-            tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
-            print(f"Original tile: mode={tile.mode}, size={tile.size}")
-            
-            print("Converting to RGB...")
-            tile = tile.convert('RGB')
-            print(f"Converted tile: mode={tile.mode}")
-            
-            print("Saving as JPEG...")
-            output = io.BytesIO()
-            tile.save(output, format='JPEG', quality=90, optimize=True)
-            output_size = len(output.getvalue())
-            print(f"JPEG size: {output_size} bytes")
-            
-            output.seek(0)
-            print("Sending response...")
-            return send_file(
-                output,
-                mimetype='image/jpeg',
-                as_attachment=False
-            )
+        # 타일 읽기
+        tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
+        print(f"Read tile: mode={tile.mode}, size={tile.size}")
 
-        except Exception as inner_e:
-            print(f"Error processing tile: {str(inner_e)}")
-            import traceback
-            print(traceback.format_exc())
-            return jsonify({'error': 'Failed to process tile'}), 500
+        # RGBA에서 RGB로 변환
+        tile = tile.convert('RGB')
+
+        # JPEG로 변환 및 응답
+        response = make_response()
+        output = io.BytesIO()
+        tile.save(output, format='JPEG', quality=90)
+        output.seek(0)
+        
+        response.data = output.getvalue()
+        response.headers.set('Content-Type', 'image/jpeg')
+        response.headers.set('Cache-Control', 'public, max-age=31536000')
+        print("Sending tile response")
+        return response
 
     except Exception as e:
         print(f"Error in get_tile: {str(e)}")
