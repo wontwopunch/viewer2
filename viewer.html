@@ -401,43 +401,50 @@
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
                     
+                    // 타일 URL 생성
                     getTileUrl: function(level, x, y) {
-                        const url = `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
-                        console.log(`Requesting tile: level=${level}, x=${x}, y=${y}, url=${url}`);
-                        return url;
+                        return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
                     }
                 },
                 
                 // 뷰어 설정
                 showFullPageControl: false,
-                defaultZoomLevel: 0,
-                minZoomLevel: 0,
+                defaultZoomLevel: 1,
+                minZoomLevel: 0.1,
                 maxZoomLevel: 10,
                 
                 // 성능 설정
-                imageLoaderLimit: 10,
+                imageLoaderLimit: 5,
                 maxImageCacheCount: 200,
                 timeout: 60000,
                 
-                // 디버그 모드 활성화
-                debugMode: true,
+                // 렌더링 설정
+                immediateRender: true,
+                blendTime: 0,
+                alwaysBlend: false,
+                placeholderFillStyle: "#fff",
                 
-                // 추가 설정
-                visibilityRatio: 1,
-                constrainDuringPan: true,
-                homeFillsViewer: true
+                // 뷰포트 설정
+                visibilityRatio: 0.5,
+                constrainDuringPan: false,
+                wrapHorizontal: false,
+                wrapVertical: false
+            });
+
+            // 초기화 후 뷰포트 설정
+            viewer.addHandler('open', function() {
+                viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, info.dimensions[1] / info.dimensions[0]));
+                viewer.viewport.minZoomLevel = viewer.viewport.imageToViewportZoom(0.8);
+            });
+
+            // 타일 로딩 모니터링
+            viewer.addHandler('tile-loaded', function(event) {
+                console.log(`Tile loaded: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
+                viewer.drawer.needsUpdate = true;  // 화면 갱신 강제
+                viewer.forceRedraw();  // 강제 다시 그리기
             });
 
             // 이벤트 핸들러
-            viewer.addHandler('open', function(event) {
-                console.log('Viewer opened');
-                viewer.viewport.goHome();
-            });
-
-            viewer.addHandler('tile-loaded', function(event) {
-                console.log(`Tile loaded: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
-            });
-
             viewer.addHandler('tile-load-failed', function(event) {
                 console.error(`Tile load failed: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
                 // 실패한 타일 다시 시도
