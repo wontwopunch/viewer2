@@ -150,8 +150,8 @@ def upload_file():
         print(f'Upload error: {str(e)}')  # 디버그 로그 추가
         return jsonify({'error': str(e)}), 500
 
-# 타일 크기와 품질 상수 수정
-TILE_SIZE = 512  # 1024에서 512로 더 감소
+# 전역 상수 수정
+TILE_SIZE = 2048  # 512에서 2048로 변경
 JPEG_QUALITY = 40  # 50에서 40으로 감소
 MAX_WORKERS = 4   # 8에서 4로 감소
 
