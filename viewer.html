@@ -384,7 +384,13 @@
 
         // 슬라이드 정보를 가져온 후 뷰어 초기화
         getSlideInfo(filename).then(info => {
-            console.log('Slide info received:', info);  // 슬라이드 정보 확인
+            console.log('Slide info received:', info);
+            
+            // 로딩 오버레이 숨기기
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
             
             // OpenSeadragon 뷰어 초기화
             const viewer = OpenSeadragon({
