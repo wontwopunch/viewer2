@@ -392,7 +392,6 @@
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 showNavigator: true,
                 
-                // 기본 설정
                 tileSources: {
                     type: 'legacy-image-pyramid',
                     width: info.dimensions[0],
@@ -400,35 +399,15 @@
                     tileSize: 2048,
                     minLevel: 0,
                     maxLevel: info.level_count - 1,
-                    
-                    // 타일 URL 생성
                     getTileUrl: function(level, x, y) {
                         return `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
                     }
                 },
                 
-                // 뷰어 설정
-                showFullPageControl: false,
                 defaultZoomLevel: 1,
                 minZoomLevel: 0.1,
                 maxZoomLevel: 10,
-                
-                // 성능 설정
-                imageLoaderLimit: 5,
-                maxImageCacheCount: 200,
-                timeout: 60000,
-                
-                // 렌더링 설정
-                immediateRender: true,
-                blendTime: 0,
-                alwaysBlend: false,
-                placeholderFillStyle: "#fff",
-                
-                // 뷰포트 설정
-                visibilityRatio: 0.5,
-                constrainDuringPan: false,
-                wrapHorizontal: false,
-                wrapVertical: false
+                immediateRender: true
             });
 
             // 초기화 후 뷰포트 설정
@@ -446,11 +425,7 @@
 
             // 이벤트 핸들러
             viewer.addHandler('tile-load-failed', function(event) {
-                console.error(`Tile load failed: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
-                // 실패한 타일 다시 시도
-                setTimeout(() => {
-                    event.tile.retry();
-                }, 1000);
+                console.error('Tile load failed:', event);
             });
 
             // 초기 로딩 완료 후

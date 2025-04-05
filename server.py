@@ -270,59 +270,54 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        print(f"Tile request: filename={filename}, level={level}, x={x}, y={y}")
+        print(f"Processing tile request: level={level}, x={x}, y={y}")  # 디버그 로그
         
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
         if not os.path.exists(slide_path):
-            print(f"Slide file not found: {slide_path}")
-            return jsonify({'error': 'Slide file not found'}), 404
+            print(f"Slide not found: {slide_path}")
+            return jsonify({'error': 'Slide not found'}), 404
 
         # OpenSlide 객체 가져오기
         if slide_path not in slide_cache:
+            print(f"Creating new slide object for {slide_path}")  # 디버그 로그
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
 
-        # 타일 크기 계산
-        tile_size = 2048
-        level_downsample = slide.level_downsamples[level]
-        
+        # 슬라이드 크기 확인
+        print(f"Slide dimensions: {slide.dimensions}")  # 디버그 로그
+        print(f"Level count: {slide.level_count}")  # 디버그 로그
+        print(f"Level dimensions: {slide.level_dimensions}")  # 디버그 로그
+        print(f"Level downsamples: {slide.level_downsamples}")  # 디버그 로그
+
         # 타일 위치 계산
-        x_pos = int(x * tile_size * level_downsample)
-        y_pos = int(y * tile_size * level_downsample)
-        
-        # 경계 체크 및 크기 조정
-        read_width = tile_size
-        read_height = tile_size
-        
-        if x_pos + read_width > slide.dimensions[0]:
-            read_width = slide.dimensions[0] - x_pos
-        if y_pos + read_height > slide.dimensions[1]:
-            read_height = slide.dimensions[1] - y_pos
-            
-        if read_width <= 0 or read_height <= 0:
-            return jsonify({'error': 'Invalid tile coordinates'}), 400
+        level_downsample = slide.level_downsamples[level]
+        x_pos = int(x * TILE_SIZE * level_downsample)
+        y_pos = int(y * TILE_SIZE * level_downsample)
+
+        print(f"Reading region at: pos=({x_pos}, {y_pos}), level={level}, size={TILE_SIZE}")  # 디버그 로그
 
         # 타일 읽기
-        tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
+        tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
         tile = tile.convert('RGB')
-
-        # 크기가 다른 경우 리사이즈
-        if read_width != tile_size or read_height != tile_size:
-            tile = tile.resize((tile_size, tile_size), PIL.Image.Resampling.BILINEAR)
 
         # JPEG로 변환
         output = io.BytesIO()
         tile.save(output, format='JPEG', quality=90)
         output.seek(0)
 
-        return send_file(
+        response = send_file(
             output,
             mimetype='image/jpeg',
             as_attachment=False
         )
+        response.headers['Cache-Control'] = 'public, max-age=31536000'
+        return response
 
     except Exception as e:
-        print(f"Error in get_tile: {str(e)}")
+        print(f"Error in get_tile: {str(e)}")  # 에러 로그
+        print(f"Error details: {type(e).__name__}")  # 에러 타입
+        import traceback
+        print(traceback.format_exc())  # 스택 트레이스
         return jsonify({'error': str(e)}), 500
 
 def load_public_files():
