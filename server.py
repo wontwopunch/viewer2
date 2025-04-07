@@ -52,6 +52,7 @@ ALLOWED_PATHS = [
     r'^/files$',
     r'^/files/.*$',
     r'^/upload$',  # upload 경로 추가 확인
+    r'^/status$',
 ]
 
 @app.before_request

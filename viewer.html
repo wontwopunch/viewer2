@@ -757,19 +757,35 @@
             return altViewer;
         }
 
-        // 타일 로드 실패 감지 시점 조정
+        // 대체 뷰어 시도 전 info 변수 확인
         setTimeout(() => {
             // 첫 번째 타일 로드 실패 확인 로직 수정
             const loadedTiles = document.querySelectorAll('.openseadragon-canvas img').length;
             console.log(`로드된 타일 수: ${loadedTiles}`);
             
+            // info 변수 확인
+            console.log("슬라이드 정보 확인:", info);
+            
             if (loadedTiles < 5) {  // 최소 5개 이상의 타일이 로드되어야 성공으로 간주
                 console.log("타일 로드 실패 감지 - 대체 뷰어 시도");
-                setupAlternativeViewer();
+                
+                // info 변수 사용 전 명시적 확인
+                if (typeof info !== 'undefined' && info && info.dimensions) {
+                    setupAlternativeViewer();
+                } else {
+                    console.error("타일 로드 실패와 info 변수 누락");
+                    document.getElementById('viewer').innerHTML = `
+                        <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
+                            <h3>이미지 로드 오류</h3>
+                            <p>SVS 파일 정보를 불러올 수 없습니다.</p>
+                            <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
+                        </div>
+                    `;
+                }
             } else {
                 console.log("충분한 타일이 로드됨 - 정상 작동 중");
             }
-        }, 5000);  // 5초로 늘림
+        }, 5000);
 
         // 서버 상태 확인 함수
         function checkServerStatus() {
