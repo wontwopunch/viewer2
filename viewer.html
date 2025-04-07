@@ -366,6 +366,9 @@
         // API 기본 URL 설정
         const API_BASE_URL = 'http://188.166.255.196:5000';
 
+        // 전역 변수로 info 선언
+        let info;
+
         // 슬라이드 정보를 가져온 후 뷰어 초기화
         let slideInfoFetched = false; // 슬라이드 정보가 이미 가져왔는지 여부를 추적
 
@@ -385,7 +388,8 @@
                     }
                     return response.json();
                 })
-                .then(info => {
+                .then(data => {
+                    info = data; // 전역 변수에 슬라이드 정보 저장
                     console.log('Slide info received:', info);
                     
                     // 로딩 오버레이 숨기기 (있는 경우)
