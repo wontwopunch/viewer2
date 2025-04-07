@@ -18,6 +18,7 @@ import time
 from threading import Timer
 import re
 from werkzeug.serving import run_simple
+from datetime import datetime
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -274,7 +275,6 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        # 디버그 로그 강화
         print(f"\n===== 타일 요청: {filename}, level={level}, x={x}, y={y} =====")
         
         # 슬라이드 파일 경로
@@ -287,97 +287,60 @@ def get_tile(filename, level, x, y):
         # 슬라이드 객체 준비
         if slide_path not in slide_cache:
             print(f"새 슬라이드 객체 생성: {slide_path}")
-            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
+            try:
+                slide_cache[slide_path] = openslide.OpenSlide(slide_path)
+            except Exception as e:
+                print(f"슬라이드 객체 생성 실패: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                
+                # 오류 발생 시 디버그 타일 반환
+                debug_tile = create_debug_tile(f"OpenSlide Error: {str(e)}")
+                return send_file(debug_tile, mimetype='image/jpeg')
+                
         slide = slide_cache[slide_path]
         
-        # 이미지 정보 출력
-        print(f"이미지 크기: {slide.dimensions}")
-        print(f"레벨 수: {slide.level_count}")
-        for i in range(slide.level_count):
-            print(f"  레벨 {i}: {slide.level_dimensions[i]}, 다운샘플: {slide.level_downsamples[i]}")
+        # 최소한의 정보만 출력
+        if x == 0 and y == 0:
+            print(f"이미지 크기: {slide.dimensions}")
+            print(f"레벨 수: {slide.level_count}")
+            for i in range(slide.level_count):
+                print(f"  레벨 {i}: {slide.level_dimensions[i]}, 다운샘플: {slide.level_downsamples[i]}")
         
-        # 타일 크기 (고정)
-        tile_size = TILE_SIZE
+        # 간단한 접근 방식 - 레벨 0 기준
+        tile_size = 2048  # 고정 타일 크기
         
-        # 레벨 확인 및 조정
-        if level >= slide.level_count:
-            print(f"레벨 조정: {level} -> {slide.level_count-1}")
-            level = slide.level_count - 1
-            
-        # 다운샘플 계수
-        downsample = slide.level_downsamples[level]
-        
-        # === 핵심 수정: 타일 좌표 계산 방식 변경 ===
-        # 각 레벨의 타일 크기 계산
-        level_tile_size = int(tile_size * downsample)
-        
-        # 레벨에 맞는 픽셀 좌표 계산
-        x_pos = int(x * tile_size)
-        y_pos = int(y * tile_size)
-        
-        # 실제 레벨 0 좌표로 변환
-        base_x = int(x_pos * downsample)
-        base_y = int(y_pos * downsample)
-        
-        # 좌표 계산 정보 출력
-        print(f"다운샘플: {downsample}")
-        print(f"타일 좌표: level={level}, x={x}, y={y}")
-        print(f"픽셀 좌표(레벨 {level}): x_pos={x_pos}, y_pos={y_pos}")
-        print(f"실제 요청 좌표(레벨 0): base_x={base_x}, base_y={base_y}")
-        
-        # 이미지 경계 확인
-        width, height = slide.dimensions
-        if base_x >= width or base_y >= height:
-            print(f"좌표 범위 초과: ({base_x}, {base_y}) - 빈 타일 생성")
-            blank = PIL.Image.new('RGB', (tile_size, tile_size), (240, 240, 240))
-            output = io.BytesIO()
-            blank.save(output, format='JPEG', quality=90)
-            output.seek(0)
-            return send_file(output, mimetype='image/jpeg')
-            
-        # 타일 읽기 시도
         try:
-            # 읽을 크기 계산 (경계 처리)
-            read_width = min(level_tile_size, width - base_x)
-            read_height = min(level_tile_size, height - base_y)
+            # OpenSlide 직접 호출 방식으로 변경
+            # 레벨 조정
+            if level >= slide.level_count:
+                level = slide.level_count - 1
+                
+            # 레벨 0 기준 좌표 계산 (가장 단순한 방식)
+            x_pos = x * tile_size
+            y_pos = y * tile_size
             
-            print(f"읽기 시도: 위치=({base_x}, {base_y}), 레벨={level}, 크기=({read_width}, {read_height})")
+            # 레벨이 0이 아닌 경우 레벨 0 기준으로 변환
+            if level > 0:
+                downsample = slide.level_downsamples[level]
+                x_pos = int(x_pos * downsample)
+                y_pos = int(y_pos * downsample)
+                
+            print(f"타일 읽기 시도: 레벨={level}, 위치=({x_pos}, {y_pos}), 크기={tile_size}")
             
-            # 직접 레벨 0에서 읽고 크기 조정
-            if level == 0:
-                # 레벨 0에서는 그대로 읽기
-                tile = slide.read_region((base_x, base_y), 0, (read_width, read_height))
-                print(f"레벨 0에서 직접 읽기 성공: {tile.size}")
-            else:
-                # 상위 레벨은 레벨 0에서 읽고 크기 조정
-                level_width = slide.level_dimensions[level][0]
-                level_height = slide.level_dimensions[level][1]
-                
-                # 레벨에 맞게 좌표 조정
-                level_x = int(base_x / downsample)
-                level_y = int(base_y / downsample)
-                
-                # 읽을 크기 조정
-                level_read_width = min(tile_size, level_width - level_x)
-                level_read_height = min(tile_size, level_height - level_y)
-                
-                print(f"조정된 레벨 {level} 읽기: 위치=({level_x}, {level_y}), 크기=({level_read_width}, {level_read_height})")
-                
-                # 레벨에 맞게 직접 읽기
-                tile = slide.read_region((base_x, base_y), level, (level_read_width, level_read_height))
-                print(f"레벨 {level}에서 읽기 성공: {tile.size}")
+            # 경계 확인
+            width, height = slide.dimensions
+            if x_pos >= width or y_pos >= height:
+                print(f"좌표 범위 초과: ({x_pos}, {y_pos})")
+                return send_file(create_debug_tile(f"범위 초과: x={x}, y={y}"), mimetype='image/jpeg')
             
-            # RGBA -> RGB 변환
+            # 직접 타일 읽기 시도
+            tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
             tile = tile.convert('RGB')
-            
-            # 크기 조정 필요시
-            if tile.size != (tile_size, tile_size):
-                print(f"타일 크기 조정: {tile.size} -> ({tile_size}, {tile_size})")
-                tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
             
             # 응답 생성
             output = io.BytesIO()
-            tile.save(output, format='JPEG', quality=95)
+            tile.save(output, format='JPEG', quality=90)
             output.seek(0)
             print(f"타일 생성 성공: level={level}, x={x}, y={y}")
             return send_file(output, mimetype='image/jpeg')
@@ -385,20 +348,47 @@ def get_tile(filename, level, x, y):
         except Exception as e:
             print(f"타일 읽기 오류: {str(e)}")
             import traceback
-            print(traceback.format_exc())
+            trace = traceback.format_exc()
+            print(trace)
             
-            # 오류 발생 시 빈 타일 반환
-            blank = PIL.Image.new('RGB', (tile_size, tile_size), (220, 220, 220))
-            output = io.BytesIO()
-            blank.save(output, format='JPEG')
-            output.seek(0)
-            return send_file(output, mimetype='image/jpeg')
-            
+            # 오류 메시지와 함께 디버그 타일 생성
+            return send_file(create_debug_tile(f"Error: {str(e)}"), mimetype='image/jpeg')
+    
     except Exception as e:
-        print(f"get_tile 함수 오류: {str(e)}")
+        print(f"전체 함수 오류: {str(e)}")
         import traceback
         print(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        return send_file(create_debug_tile(f"Server Error: {str(e)}"), mimetype='image/jpeg')
+
+# 디버그 타일 생성 함수 추가
+def create_debug_tile(message="Error"):
+    """디버그 정보가 포함된 타일 생성"""
+    tile_size = 2048
+    # 빨간색 배경의 타일 생성
+    tile = PIL.Image.new('RGB', (tile_size, tile_size), (255, 200, 200))
+    draw = PIL.ImageDraw.Draw(tile)
+    
+    # 폰트 설정
+    try:
+        font = PIL.ImageFont.truetype("arial.ttf", 40)
+    except IOError:
+        font = PIL.ImageFont.load_default()
+    
+    # 격자 패턴 그리기
+    for i in range(0, tile_size, 100):
+        draw.line([(0, i), (tile_size, i)], fill=(200, 200, 200), width=1)
+        draw.line([(i, 0), (i, tile_size)], fill=(200, 200, 200), width=1)
+    
+    # 텍스트 추가
+    draw.text((100, 100), f"디버그 타일", fill=(0, 0, 0), font=font)
+    draw.text((100, 150), f"{message}", fill=(255, 0, 0), font=font)
+    draw.text((100, 200), f"생성 시간: {datetime.now().strftime('%H:%M:%S')}", fill=(0, 0, 0), font=font)
+    
+    # 이미지 저장
+    output = io.BytesIO()
+    tile.save(output, format='JPEG', quality=85)
+    output.seek(0)
+    return output
 
 def load_public_files():
     try:

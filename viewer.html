@@ -409,17 +409,15 @@
                     minLevel: 0,
                     
                     getTileUrl: function(level, x, y) {
-                        // 로깅 강화
-                        if (x % 5 === 0 && y % 5 === 0) {
-                            console.log(`Detailed tile request: level=${level}, x=${x}, y=${y}`);
-                            console.log(`Level dimensions: ${info.level_dimensions[level]}`);
-                            console.log(`Level downsample: ${info.level_downsamples[level]}`);
+                        // 로깅 간소화 - 첫 번째 타일에만 상세 로그
+                        if (x === 0 && y === 0) {
+                            console.log(`상세 타일 요청: level=${level}, 원본 차원=${info.dimensions}`);
                         }
                         const url = `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
                         return url;
                     },
                     
-                    tileOverlap: 0,  // 겹침 줄여서 테스트
+                    tileOverlap: 0,
                     wrapHorizontal: false,
                     wrapVertical: false,
                     crossOriginPolicy: 'Anonymous',
@@ -560,9 +558,16 @@
             showInfoBtn.innerText = '이미지 정보';
             showInfoBtn.style.cssText = 'padding: 8px 12px; margin: 5px; background: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;';
             
+            // 새로고침 버튼
+            const refreshBtn = document.createElement('button');
+            refreshBtn.id = 'refreshBtn';
+            refreshBtn.innerText = '강제 새로고침';
+            refreshBtn.style.cssText = 'padding: 8px 12px; margin: 5px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;';
+            
             // 컨테이너에 버튼 추가
             controlsDiv.appendChild(showFullImageBtn);
             controlsDiv.appendChild(showInfoBtn);
+            controlsDiv.appendChild(refreshBtn);
             
             // 문서에 컨트롤 추가
             document.getElementById('viewer').appendChild(controlsDiv);
@@ -588,6 +593,27 @@
                     e.preventDefault();
                     e.stopPropagation();
                     showImageInfo();
+                });
+                
+                // 새로고침 버튼 이벤트
+                document.getElementById('refreshBtn').addEventListener('click', function(e) {
+                    console.log('새로고침 버튼 클릭');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // 뷰어 상태 확인
+                    const zoom = viewer.viewport.getZoom();
+                    const bounds = viewer.viewport.getBounds();
+                    console.log(`현재 상태 - zoom: ${zoom}, bounds: ${JSON.stringify(bounds)}`);
+                    
+                    // 모든 타일 강제 새로고침
+                    viewer.world.resetItems();
+                    viewer.forceRedraw();
+                    
+                    // 3초 후 홈으로 이동
+                    setTimeout(() => {
+                        viewer.viewport.goHome(true);
+                    }, 1000);
                 });
             }, 300);
         }
