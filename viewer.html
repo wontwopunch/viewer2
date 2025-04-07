@@ -655,9 +655,28 @@
             infoDiv.style.display = 'block';
         }
 
-        // 새로운 대체 뷰어 설정 추가
+        // 대체 뷰어 함수 수정
         function setupAlternativeViewer() {
             console.log("대체 뷰어 설정");
+            
+            // 이미 로드된 정보 확인
+            if (typeof info === 'undefined' || !info) {
+                console.error("슬라이드 정보가 없습니다. 대체 뷰어를 설정할 수 없습니다.");
+                
+                // 기본 오류 메시지 표시
+                const viewerContainer = document.getElementById('viewer');
+                viewerContainer.innerHTML = `
+                    <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
+                        <h3>이미지 로드 오류</h3>
+                        <p>SVS 파일 정보를 불러올 수 없습니다.</p>
+                        <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
+                        <button onclick="window.location.href='dashboard.html'" style="padding:10px; background:#2c3e50; color:white; border:none; border-radius:3px; cursor:pointer; margin-left:10px;">목록으로</button>
+                    </div>
+                `;
+                return null;
+            }
+            
+            console.log("대체 뷰어 사용 - 슬라이드 정보:", info);
             
             // 기존 뷰어 요소 제거
             const viewerContainer = document.getElementById('viewer');
@@ -738,15 +757,49 @@
             return altViewer;
         }
 
-        // 초기 로드 후 대체 로직도 추가
+        // 타일 로드 실패 감지 시점 조정
         setTimeout(() => {
-            // 첫 번째 타일 로드 실패 확인
-            const tileLoadFailCount = document.querySelectorAll('.openseadragon-canvas img').length;
-            if (tileLoadFailCount === 0) {
+            // 첫 번째 타일 로드 실패 확인 로직 수정
+            const loadedTiles = document.querySelectorAll('.openseadragon-canvas img').length;
+            console.log(`로드된 타일 수: ${loadedTiles}`);
+            
+            if (loadedTiles < 5) {  // 최소 5개 이상의 타일이 로드되어야 성공으로 간주
                 console.log("타일 로드 실패 감지 - 대체 뷰어 시도");
                 setupAlternativeViewer();
+            } else {
+                console.log("충분한 타일이 로드됨 - 정상 작동 중");
             }
-        }, 3000);  // 3초 후 확인
+        }, 5000);  // 5초로 늘림
+
+        // 서버 상태 확인 함수
+        function checkServerStatus() {
+            fetch(`${API_BASE_URL}/status`)
+                .then(response => {
+                    if (response.ok) {
+                        console.log("서버가 다시 온라인 상태입니다.");
+                        location.reload(); // 페이지 새로고침
+                    } else {
+                        console.log("서버가 여전히 응답하지 않습니다.");
+                        setTimeout(checkServerStatus, 5000); // 5초마다 다시 확인
+                    }
+                })
+                .catch(error => {
+                    console.log("서버 연결 실패:", error);
+                    document.getElementById('viewer').innerHTML = `
+                        <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
+                            <h3>서버 연결 오류</h3>
+                            <p>현재 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.</p>
+                            <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
+                        </div>
+                    `;
+                    setTimeout(checkServerStatus, 5000); // 5초마다 다시 확인
+                });
+        }
+
+        // 페이지 로드 시 서버 상태 확인 시작
+        window.addEventListener('load', function() {
+            checkServerStatus();
+        });
     </script>
 </body>
 </html> 
