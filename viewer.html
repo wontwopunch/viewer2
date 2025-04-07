@@ -586,108 +586,6 @@
             infoDiv.style.display = 'block';
         }
 
-        // 대체 뷰어 함수 수정
-        function setupAlternativeViewer() {
-            console.log("대체 뷰어 설정");
-            
-            // 이미 로드된 정보 확인
-            if (typeof info === 'undefined' || !info) {
-                console.error("슬라이드 정보가 없습니다. 대체 뷰어를 설정할 수 없습니다.");
-                
-                // 기본 오류 메시지 표시
-                const viewerContainer = document.getElementById('viewer');
-                viewerContainer.innerHTML = `
-                    <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
-                        <h3>이미지 로드 오류</h3>
-                        <p>SVS 파일 정보를 불러올 수 없습니다.</p>
-                        <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
-                        <button onclick="window.location.href='dashboard.html'" style="padding:10px; background:#2c3e50; color:white; border:none; border-radius:3px; cursor:pointer; margin-left:10px;">목록으로</button>
-                    </div>
-                `;
-                return null;
-            }
-            
-            console.log("대체 뷰어 사용 - 슬라이드 정보:", info);
-            
-            // 기존 뷰어 요소 제거
-            const viewerContainer = document.getElementById('viewer');
-            viewerContainer.innerHTML = '';
-            
-            // 새 뷰어 설정 - 단순화된 방식
-            const altViewer = OpenSeadragon({
-                id: 'viewer',
-                prefixUrl: 'https://openseadragon.github.io/openseadragon/images/',
-                tileSources: {
-                    width: info.dimensions[0],
-                    height: info.dimensions[1],
-                    tileSize: 1024,  // 작은 타일 크기
-                    minLevel: 0,
-                    maxLevel: info.level_count - 1,
-                    getTileUrl: function(level, x, y) {
-                        const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
-                        console.log(`요청 타일: ${url}`);
-                        return url;
-                    }
-                },
-                animationTime: 0.5,
-                blendTime: 0.1,
-                constrainDuringPan: true,
-                maxZoomPixelRatio: 2,
-                minZoomImageRatio: 1,
-                zoomPerScroll: 2,
-                defaultZoomLevel: 1,
-                showNavigator: true
-            });
-            
-            console.log("대체 뷰어 생성 완료");
-            
-            // 유틸리티 버튼 추가
-            const controlsDiv = document.createElement('div');
-            controlsDiv.style.position = 'absolute';
-            controlsDiv.style.top = '10px';
-            controlsDiv.style.left = '10px';
-            controlsDiv.style.zIndex = 9999;
-            
-            const homeBtn = document.createElement('button');
-            homeBtn.textContent = '전체보기';
-            homeBtn.style.margin = '5px';
-            homeBtn.style.padding = '8px 12px';
-            homeBtn.style.backgroundColor = '#3498db';
-            homeBtn.style.color = 'white';
-            homeBtn.style.border = 'none';
-            homeBtn.style.borderRadius = '4px';
-            homeBtn.onclick = function() {
-                altViewer.viewport.goHome();
-            };
-            
-            const testBtn = document.createElement('button');
-            testBtn.textContent = '상태 점검';
-            testBtn.style.margin = '5px';
-            testBtn.style.padding = '8px 12px';
-            testBtn.style.backgroundColor = '#e74c3c';
-            testBtn.style.color = 'white';
-            testBtn.style.border = 'none';
-            testBtn.style.borderRadius = '4px';
-            testBtn.onclick = function() {
-                fetch(`${API_BASE_URL}/slide/${filename}/check`)
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('파일 상태:', data);
-                        alert(`파일 상태: ${data.status}\n크기: ${data.filesize_mb}MB\n열기 가능: ${data.can_open || false}`);
-                    })
-                    .catch(err => {
-                        console.error('상태 점검 오류:', err);
-                        alert('상태 점검 실패');
-                    });
-            };
-            
-            controlsDiv.appendChild(homeBtn);
-            controlsDiv.appendChild(testBtn);
-            viewerContainer.appendChild(controlsDiv);
-            
-            return altViewer;
-        }
-
         // 대체 뷰어 시도 전 info 변수 확인
         setTimeout(() => {
             // 첫 번째 타일 로드 실패 확인 로직 수정
@@ -702,16 +600,6 @@
                 
                 // info 변수 사용 전 명시적 확인
                 if (typeof info !== 'undefined' && info && info.dimensions) {
-                    setupAlternativeViewer();
-                } else {
-                    console.error("타일 로드 실패와 info 변수 누락");
-                    document.getElementById('viewer').innerHTML = `
-                        <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
-                            <h3>이미지 로드 오류</h3>
-                            <p>SVS 파일 정보를 불러올 수 없습니다.</p>
-                            <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
-                        </div>
-                    `;
                 }
             } else {
                 console.log("충분한 타일이 로드됨 - 정상 작동 중");
