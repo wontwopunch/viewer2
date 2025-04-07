@@ -611,8 +611,10 @@
             fetch(`${API_BASE_URL}/status`)
                 .then(response => {
                     if (response.ok) {
-                        console.log("서버가 다시 온라인 상태입니다.");
-                        location.reload(); // 페이지 새로고침
+                        console.log("서버가 온라인 상태입니다.");
+                        // 서버가 정상일 때는 상태 확인을 중지하거나 주기를 늘립니다.
+                        // 예를 들어, 1시간 후에 다시 확인하도록 설정할 수 있습니다.
+                        setTimeout(checkServerStatus, 3600000); // 1시간 후에 다시 확인
                     } else {
                         console.log("서버가 여전히 응답하지 않습니다.");
                         setTimeout(checkServerStatus, 5000); // 5초마다 다시 확인
