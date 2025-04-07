@@ -415,11 +415,8 @@
                             minLevel: 0,
                             
                             getTileUrl: function(level, x, y) {
-                                // 로깅 간소화 - 첫 번째 타일에만 상세 로그
-                                if (x === 0 && y === 0) {
-                                    console.log(`상세 타일 요청: level=${level}, 원본 차원=${info.dimensions}`);
-                                }
-                                const url = `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
+                                const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
+                                console.log(`Requesting tile: ${url}`); // 디버깅을 위해 로그 추가
                                 return url;
                             },
                             
