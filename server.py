@@ -303,18 +303,42 @@ def get_tile(filename, level, x, y):
         print(f"Level dimensions: {slide.level_dimensions}")
         print(f"Level downsamples: {slide.level_downsamples}")
         
-        # 계산 방식 변경 - 레벨 0에서의 위치 계산
-        # 다운샘플링은 이미 OpenSlide에서 처리됨
-        x_pos = int(x * TILE_SIZE)
-        y_pos = int(y * TILE_SIZE)
+        # 수정된 타일 계산 방식
+        # 기본 타일 크기 (일관성을 위해 상수 유지)
+        tile_size = TILE_SIZE
         
-        print(f"Reading region at: level={level}, pos=({x_pos}, {y_pos}), size={TILE_SIZE}")
+        # 레벨에 따른 다운샘플링 계수 가져오기
+        downsample = slide.level_downsamples[level]
         
-        # 타일 읽기
-        tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
-        tile = tile.convert('RGB')  # RGBA → RGB 변환
+        # 레벨 0 기준의 타일 위치 계산 (수정된 부분)
+        x_pos = int(x * tile_size)
+        y_pos = int(y * tile_size)
         
-        print(f"Tile read successfully: {tile.size} mode={tile.mode}")
+        # 이미지의 실제 크기와 비교
+        width, height = slide.dimensions
+        
+        print(f"Calculated position: ({x_pos}, {y_pos}) at level {level} with downsample {downsample}")
+        print(f"Image dimensions: {width} x {height}")
+        
+        # 경계 확인
+        if x_pos >= width or y_pos >= height:
+            print(f"Position out of bounds - creating blank tile")
+            blank = PIL.Image.new('RGB', (tile_size, tile_size), (255, 255, 255))
+            output = io.BytesIO()
+            blank.save(output, format='JPEG', quality=90)
+            output.seek(0)
+            return send_file(output, mimetype='image/jpeg')
+        
+        # 타일 읽기 (원래 좌표로)
+        try:
+            print(f"Reading region at: ({x_pos}, {y_pos}), level={level}, size={tile_size}")
+            tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
+            tile = tile.convert('RGB')  # RGBA → RGB 변환
+            print(f"Tile read successfully: {tile.size} mode={tile.mode}")
+        except Exception as read_error:
+            print(f"Error reading region: {str(read_error)}")
+            # 오류 발생 시 빈 타일 생성
+            tile = PIL.Image.new('RGB', (tile_size, tile_size), (240, 240, 240))
         
         # 캐시에 저장
         tile_cache[cache_key] = tile.copy()

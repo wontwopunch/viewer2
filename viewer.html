@@ -398,13 +398,15 @@
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 showNavigator: true,
                 navigatorPosition: "BOTTOM_RIGHT",
+                navigatorHeight: "15%",
                 
                 tileSources: {
                     width: info.dimensions[0],
                     height: info.dimensions[1],
-                    tileSize: info.tile_size || 2048,  // 서버에서 전달된 타일 크기 사용
-                    minLevel: 0,
+                    tileSize: info.tile_size || 2048,
+                    
                     maxLevel: info.level_count - 1,
+                    minLevel: 0,
                     
                     getTileUrl: function(level, x, y) {
                         const url = `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
@@ -412,43 +414,55 @@
                         return url;
                     },
                     
-                    // 중요: 타일 오버랩 설정 추가
-                    tileOverlap: 0,
-                    
-                    // 타일 형식 지정
+                    tileOverlap: 1,
                     format: 'jpeg',
-                    type: 'legacy-image-pyramid'
+                    type: 'legacy-image-pyramid',
+                    
+                    preserveViewport: true,
+                    defaultZoomLevel: 0.1
                 },
                 
-                // 뷰포트 설정
-                homeFillsViewer: true,
-                visibilityRatio: 1.0,
-                constrainDuringPan: true,
+                autoResize: true,
+                preserveViewport: true,
                 
-                // 초기 확대/축소 설정
+                homeFillsViewer: true,
+                visibilityRatio: 0.9,
+                constrainDuringPan: false,
+                
                 defaultZoomLevel: 0.1,
                 minZoomLevel: 0.05,
                 maxZoomLevel: 20,
+                zoomPerClick: 1.4,
+                zoomPerScroll: 1.2,
                 
-                // 렌더링 설정
-                immediateRender: false,
-                blendTime: 0,
-                alwaysBlend: false,
-                placeholderFillStyle: "#ffffff",
+                immediateRender: true,
+                minZoomImageRatio: 0.8,
+                maxZoomPixelRatio: 1.1,
+                blendTime: 0.1,
                 
-                // 디버깅
-                debugMode: true,
-                showReferenceStrip: true
+                animationTime: 0.5,
+                springStiffness: 5.0,
+                
+                showNavigationControl: true,
+                showSequenceControl: false,
+                showHomeControl: true,
+                showFullPageControl: false,
+                
+                debugMode: true
             });
             
-            // 이미지 로드 완료 후 처리
+            // 중요: 이미지 로드 완료 후 처리
             viewer.addHandler('open', function() {
                 console.log("Viewer opened");
                 
-                // 모든 타일을 볼 수 있도록 홈 위치로 설정
                 setTimeout(() => {
-                    viewer.viewport.goHome(true);
-                    console.log("Applied home position");
+                    viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, info.dimensions[1]/info.dimensions[0]));
+                    console.log("Applied fitBounds");
+                    
+                    setTimeout(() => {
+                        viewer.viewport.goHome(true);
+                        console.log("Applied home position");
+                    }, 200);
                 }, 100);
             });
             
