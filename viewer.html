@@ -414,7 +414,11 @@
                         return url;
                     },
                     
-                    tileOverlap: 1,
+                    tileOverlap: 2,
+                    wrapHorizontal: false,
+                    wrapVertical: false,
+                    crossOriginPolicy: 'Anonymous',
+                    ajaxWithCredentials: false,
                     format: 'jpeg',
                     type: 'legacy-image-pyramid',
                     
@@ -438,7 +442,8 @@
                 immediateRender: true,
                 minZoomImageRatio: 0.8,
                 maxZoomPixelRatio: 1.1,
-                blendTime: 0.1,
+                blendTime: 0.2,
+                alwaysBlend: true,
                 
                 animationTime: 0.5,
                 springStiffness: 5.0,
@@ -448,7 +453,9 @@
                 showHomeControl: true,
                 showFullPageControl: false,
                 
-                debugMode: true
+                debugMode: true,
+                opacity: 1.0,
+                placeholderFillStyle: "#F8F8F8"
             });
             
             // 중요: 이미지 로드 완료 후 처리

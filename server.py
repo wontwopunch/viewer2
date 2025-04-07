@@ -243,6 +243,10 @@ def create_tile(slide, level, x, y, tile_size, filename):
             tile = slide.read_region((x_pos, y_pos), level, (read_size, read_size))
             tile = tile.convert('RGB')
             
+            # 타일 경계를 부드럽게 만들기 위한 처리 추가
+            # 약간의 블러 효과 추가 (선택사항, 품질에 따라 조정)
+            # tile = tile.filter(PIL.ImageFilter.SMOOTH)
+            
             # 크기 조정이 필요한 경우
             if read_size != TILE_SIZE:
                 tile = tile.resize((TILE_SIZE, TILE_SIZE), PIL.Image.Resampling.BILINEAR)  # LANCZOS 대신 BILINEAR 사용
@@ -334,6 +338,11 @@ def get_tile(filename, level, x, y):
             print(f"Reading region at: ({x_pos}, {y_pos}), level={level}, size={tile_size}")
             tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
             tile = tile.convert('RGB')  # RGBA → RGB 변환
+            
+            # 타일 경계를 부드럽게 만들기 위한 처리 추가
+            # 약간의 블러 효과 추가 (선택사항, 품질에 따라 조정)
+            # tile = tile.filter(PIL.ImageFilter.SMOOTH)
+            
             print(f"Tile read successfully: {tile.size} mode={tile.mode}")
         except Exception as read_error:
             print(f"Error reading region: {str(read_error)}")
@@ -343,9 +352,9 @@ def get_tile(filename, level, x, y):
         # 캐시에 저장
         tile_cache[cache_key] = tile.copy()
         
-        # 응답 생성
+        # 응답 생성 (품질 조정)
         output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=90)
+        tile.save(output, format='JPEG', quality=95)  # 품질 향상
         output.seek(0)
         
         print(f"Sending tile response: {level}/{x}/{y}")
