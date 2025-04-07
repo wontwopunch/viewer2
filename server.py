@@ -507,17 +507,23 @@ def serve_public_file(filename):
 def get_slide_info(filename):
     try:
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        
+        if not os.path.exists(slide_path):
+            return jsonify({'error': 'Slide not found'}), 404
+            
         if slide_path not in slide_cache:
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
+        # 타일 크기를 정의 (서버의 TILE_SIZE 변수와 일치해야 함)
+        tile_size = 2048
+        
+        # SVS 파일 정보를 반환할 때 타일 크기도 포함
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
             'level_dimensions': slide.level_dimensions,
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': TILE_SIZE,  # 일관된 타일 크기 사용
+            'tile_size': tile_size,  # 클라이언트에게 타일 크기 전달
             'properties': dict(slide.properties)
         }
         
