@@ -837,6 +837,18 @@ def get_simple_tile(filename, level, x, y):
     except Exception as e:
         return send_file(create_debug_tile(f"전체 오류: {str(e)}"), mimetype='image/jpeg')
 
+# 디버그 엔드포인트 추가 - 서버 상태 확인용
+@app.route('/status')
+def server_status():
+    return jsonify({
+        'status': 'online',
+        'memory': {
+            'used_gb': psutil.Process().memory_info().rss / (1024 * 1024 * 1024),
+            'percent': psutil.virtual_memory().percent
+        },
+        'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    })
+
 if __name__ == '__main__':
     # 디렉터리 확인 및 생성
     for directory in [UPLOAD_FOLDER, DATA_FOLDER, TILE_CACHE_DIR]:
