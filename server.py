@@ -275,101 +275,78 @@ loading_tiles = set()
 def get_tile(filename, level, x, y):
     try:
         # 간소화된 디버그 로그
-        if x % 10 == 0 and y % 10 == 0:  # 일부 타일에 대해서만 로그 출력
+        if x % 10 == 0 and y % 10 == 0:
             print(f"Processing tile: {level}/{x}/{y}")
         
         # 슬라이드 파일 경로
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        print(f"Slide path: {slide_path}")
         
         if not os.path.exists(slide_path):
             print(f"Error: Slide not found - {slide_path}")
             return jsonify({'error': 'Slide not found'}), 404
             
-        # 캐시 키 생성 및 캐시 확인
-        cache_key = f"{slide_path}_{level}_{x}_{y}"
-        cached_tile = tile_cache.get(cache_key)
-        if cached_tile is not None:
-            print(f"Cache hit for tile: {level}/{x}/{y}")
-            output = io.BytesIO()
-            cached_tile.save(output, format='JPEG', quality=90)
-            output.seek(0)
-            return send_file(output, mimetype='image/jpeg')
-            
-        # OpenSlide 객체 가져오기
+        # 슬라이드 객체 준비
         if slide_path not in slide_cache:
-            print(f"Creating new slide object for {slide_path}")
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
-        print(f"Slide dimensions: {slide.dimensions}")
-        print(f"Level count: {slide.level_count}")
-        print(f"Level dimensions: {slide.level_dimensions}")
-        print(f"Level downsamples: {slide.level_downsamples}")
-        
-        # 수정된 타일 계산 방식
-        # 기본 타일 크기 (일관성을 위해 상수 유지)
+        # 타일 크기 설정
         tile_size = TILE_SIZE
         
-        # 레벨에 따른 다운샘플링 계수 가져오기
-        downsample = slide.level_downsamples[level]
-        
-        # 레벨 0 기준의 타일 위치 계산 (수정된 부분)
-        x_pos = int(x * tile_size)
-        y_pos = int(y * tile_size)
-        
-        # 이미지의 실제 크기와 비교
+        # 이미지 차원 가져오기
         width, height = slide.dimensions
         
-        print(f"Calculated position: ({x_pos}, {y_pos}) at level {level} with downsample {downsample}")
-        print(f"Image dimensions: {width} x {height}")
+        # 중요: 레벨에 따른 다운샘플링 계수 가져오기
+        if level >= slide.level_count:
+            level = slide.level_count - 1
+            
+        downsample = slide.level_downsamples[level]
+        
+        # 타일 좌표 계산 개선 (중요: 레벨 0 기준으로 좌표 계산)
+        x_pos = int(x * tile_size * downsample)
+        y_pos = int(y * tile_size * downsample)
         
         # 경계 확인
         if x_pos >= width or y_pos >= height:
-            print(f"Position out of bounds - creating blank tile")
-            blank = PIL.Image.new('RGB', (tile_size, tile_size), (255, 255, 255))
+            print(f"Tile out of bounds: ({x_pos}, {y_pos}) - creating blank tile")
+            blank = PIL.Image.new('RGB', (tile_size, tile_size), (240, 240, 240))
             output = io.BytesIO()
             blank.save(output, format='JPEG', quality=90)
             output.seek(0)
             return send_file(output, mimetype='image/jpeg')
-        
-        # 타일 읽기 (원래 좌표로)
+            
+        # 타일 읽기
         try:
-            print(f"Reading region at: ({x_pos}, {y_pos}), level={level}, size={tile_size}")
-            tile = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size))
-            tile = tile.convert('RGB')  # RGBA → RGB 변환
+            print(f"Reading region at level {level}, pos=({x_pos}, {y_pos}), size={tile_size}")
+            # 원본 크기 예상 (정확한 크기 계산)
+            expected_width = min(tile_size * downsample, width - x_pos)
+            expected_height = min(tile_size * downsample, height - y_pos)
             
-            # 타일 경계를 부드럽게 만들기 위한 처리 추가
-            # 약간의 블러 효과 추가 (선택사항, 품질에 따라 조정)
-            # tile = tile.filter(PIL.ImageFilter.SMOOTH)
+            # 타일 읽기 (원본 좌표로)
+            tile = slide.read_region((x_pos, y_pos), 0, (int(expected_width), int(expected_height)))
+            tile = tile.convert('RGB')
             
-            print(f"Tile read successfully: {tile.size} mode={tile.mode}")
-        except Exception as read_error:
-            print(f"Error reading region: {str(read_error)}")
-            # 오류 발생 시 빈 타일 생성
-            tile = PIL.Image.new('RGB', (tile_size, tile_size), (240, 240, 240))
-        
-        # 캐시에 저장
-        tile_cache[cache_key] = tile.copy()
-        
-        # 응답 생성 (품질 조정)
-        output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=95)  # 품질 향상
-        output.seek(0)
-        
-        print(f"Sending tile response: {level}/{x}/{y}")
-        return send_file(output, mimetype='image/jpeg')
-        
+            # 타일 크기를 맞추기 위해 리사이즈
+            if int(expected_width) != tile_size or int(expected_height) != tile_size:
+                tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
+            
+            # 응답 생성
+            output = io.BytesIO()
+            tile.save(output, format='JPEG', quality=95)
+            output.seek(0)
+            return send_file(output, mimetype='image/jpeg')
+            
+        except Exception as e:
+            print(f"Error reading region: {str(e)}")
+            blank = PIL.Image.new('RGB', (tile_size, tile_size), (220, 220, 220))
+            output = io.BytesIO()
+            blank.save(output, format='JPEG')
+            output.seek(0)
+            return send_file(output, mimetype='image/jpeg')
+            
     except Exception as e:
         print(f"Error in get_tile: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        # 에러 발생 시 빈 타일 반환
-        blank = PIL.Image.new('RGB', (TILE_SIZE, TILE_SIZE), (220, 220, 220))
-        output = io.BytesIO()
-        blank.save(output, format='JPEG')
-        output.seek(0)
-        return send_file(output, mimetype='image/jpeg')
+        return jsonify({'error': str(e)}), 500
 
 def load_public_files():
     try:
