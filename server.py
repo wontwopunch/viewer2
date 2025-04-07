@@ -364,16 +364,13 @@ def get_tile(filename, level, x, y):
 # 디버그 타일 생성 함수 추가
 def create_debug_tile(message="Error"):
     """디버그 정보가 포함된 타일 생성"""
-    tile_size = 2048
+    tile_size = 1024  # 작은 사이즈로 조정
     # 빨간색 배경의 타일 생성
     tile = PIL.Image.new('RGB', (tile_size, tile_size), (255, 200, 200))
     draw = PIL.ImageDraw.Draw(tile)
     
-    # 폰트 설정
-    try:
-        font = PIL.ImageFont.truetype("arial.ttf", 40)
-    except IOError:
-        font = PIL.ImageFont.load_default()
+    # 폰트 설정 - 기본 폰트로 대체
+    font = PIL.ImageFont.load_default()
     
     # 격자 패턴 그리기
     for i in range(0, tile_size, 100):
@@ -381,9 +378,8 @@ def create_debug_tile(message="Error"):
         draw.line([(i, 0), (i, tile_size)], fill=(200, 200, 200), width=1)
     
     # 텍스트 추가
-    draw.text((100, 100), f"디버그 타일", fill=(0, 0, 0), font=font)
+    draw.text((100, 100), f"DEBUG TILE", fill=(0, 0, 0), font=font)
     draw.text((100, 150), f"{message}", fill=(255, 0, 0), font=font)
-    draw.text((100, 200), f"생성 시간: {datetime.now().strftime('%H:%M:%S')}", fill=(0, 0, 0), font=font)
     
     # 이미지 저장
     output = io.BytesIO()
