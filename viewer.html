@@ -408,15 +408,18 @@
                     maxLevel: info.level_count - 1,
                     minLevel: 0,
                     
-                    defaultZoomLevel: 0,
-                    
                     getTileUrl: function(level, x, y) {
+                        // 로깅 강화
+                        if (x % 5 === 0 && y % 5 === 0) {
+                            console.log(`Detailed tile request: level=${level}, x=${x}, y=${y}`);
+                            console.log(`Level dimensions: ${info.level_dimensions[level]}`);
+                            console.log(`Level downsample: ${info.level_downsamples[level]}`);
+                        }
                         const url = `${API_BASE_URL}/slide/${filename}/tile/${level}/${x}/${y}`;
-                        console.log(`Requesting tile: ${url}`);
                         return url;
                     },
                     
-                    tileOverlap: 1,
+                    tileOverlap: 0,  // 겹침 줄여서 테스트
                     wrapHorizontal: false,
                     wrapVertical: false,
                     crossOriginPolicy: 'Anonymous',
@@ -468,40 +471,36 @@
                 // 컨트롤 추가
                 addViewerControls();
                 
-                // 이미지 로드 후 전체 이미지 표시 강제
-                viewer.world.addOnceHandler('add-item', function() {
-                    console.log('Item added to world');
+                // 이미지 로드 강제 시도
+                setTimeout(function() {
+                    console.log("Forcing initial view reset");
+                    viewer.viewport.goHome(true);
                     
-                    // 먼저 맞춤 설정
-                    setTimeout(() => {
-                        viewer.viewport.fitBoundsWithConstraints(new OpenSeadragon.Rect(0, 0, 1, info.dimensions[1]/info.dimensions[0]));
-                        console.log("Applied fitBounds with constraints");
-                        
-                        // 그 다음 홈으로 이동
-                        setTimeout(() => {
-                            viewer.viewport.goHome(true);
-                            console.log("Applied home position");
-                            
-                            // 필요한 경우 줌 조정
-                            setTimeout(() => {
-                                const zoom = viewer.viewport.getZoom();
-                                if (zoom < 0.1) {
-                                    viewer.viewport.zoomTo(0.1);
-                                }
-                            }, 200);
-                        }, 200);
-                    }, 100);
-                });
+                    // 상세 정보 출력
+                    const zoom = viewer.viewport.getZoom();
+                    const bounds = viewer.viewport.getBounds();
+                    console.log(`Initial state - zoom: ${zoom}, bounds: (${bounds.x},${bounds.y},${bounds.width},${bounds.height})`);
+                    
+                    // 강제 새로고침 시도
+                    viewer.forceRedraw();
+                }, 500);
             });
             
-            // 타일 로드 상태 로깅
-            viewer.addHandler('tile-loaded', function(event) {
-                console.log(`Tile loaded: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
-            });
-            
-            // 타일 로드 실패 로깅
+            // 타일 로드 실패 모니터링 추가
             viewer.addHandler('tile-load-failed', function(event) {
-                console.error(`Tile load failed: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
+                console.error('Tile load failed:', event);
+            });
+            
+            // 타일 성공적 로드 확인
+            viewer.addHandler('tile-loaded', function(event) {
+                // 타일 로드 성공 추적
+                const {tile} = event;
+                const level = tile.level;
+                const x = tile.x;
+                const y = tile.y;
+                if (x % 5 === 0 && y % 5 === 0) {
+                    console.log(`Tile loaded: level=${level}, x=${x}, y=${y}`);
+                }
             });
             
             // 캔버스 클릭 디버깅 (원래 있던 로직 유지)
