@@ -453,14 +453,21 @@
                 showHomeControl: true,
                 showFullPageControl: false,
                 
-                debugMode: true,
+                debugMode: false,
                 opacity: 1.0,
-                placeholderFillStyle: "#F8F8F8"
+                placeholderFillStyle: "#F8F8F8",
+                showReferenceStrip: false
             });
             
             // 중요: 이미지 로드 완료 후 처리
             viewer.addHandler('open', function() {
                 console.log("Viewer opened");
+                
+                // 디버그 정보 숨기기
+                hideDebugInfo();
+                
+                // 컨트롤 추가
+                addViewerControls();
                 
                 setTimeout(() => {
                     viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, info.dimensions[1]/info.dimensions[0]));
@@ -502,6 +509,98 @@
         });
 
         // 메모와 어노테이션 관련 함수들...
+
+        // 디버그 정보를 숨기는 함수 추가
+        function hideDebugInfo() {
+            // 타일 경계와 정보를 숨기는 CSS 추가
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .openseadragon-canvas .tile {
+                    border: none !important;
+                    outline: none !important;
+                }
+                .debugInfo, .tile-info {
+                    display: none !important;
+                }
+                .openseadragon-canvas:before, .openseadragon-canvas:after {
+                    display: none !important;
+                    content: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // 기존 디버그 요소 제거 시도
+            const debugElements = document.querySelectorAll('.debugInfo, .tile-info, .openseadragon-debug');
+            debugElements.forEach(el => el.remove());
+        }
+
+        // 뷰어 생성 후 전체 이미지 확인 버튼 추가
+        function addViewerControls() {
+            // 컨트롤 컨테이너 생성
+            const controlsDiv = document.createElement('div');
+            controlsDiv.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 1000;';
+            
+            // 전체 이미지 확인 버튼
+            const showFullImageBtn = document.createElement('button');
+            showFullImageBtn.innerText = '전체 이미지 보기';
+            showFullImageBtn.style.cssText = 'padding: 5px 10px; margin: 5px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;';
+            showFullImageBtn.onclick = function() {
+                // 전체 이미지가 보이도록 뷰포트 조정
+                viewer.viewport.goHome(true);
+                // 이미지 정보 표시
+                showImageInfo();
+            };
+            
+            // 이미지 정보 버튼
+            const showInfoBtn = document.createElement('button');
+            showInfoBtn.innerText = '이미지 정보';
+            showInfoBtn.style.cssText = 'padding: 5px 10px; margin: 5px; background: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer;';
+            showInfoBtn.onclick = showImageInfo;
+            
+            // 컨테이너에 버튼 추가
+            controlsDiv.appendChild(showFullImageBtn);
+            controlsDiv.appendChild(showInfoBtn);
+            
+            // 문서에 컨트롤 추가
+            document.getElementById('viewer').appendChild(controlsDiv);
+        }
+
+        // 이미지 정보를 표시하는 함수
+        function showImageInfo() {
+            // 정보 패널 생성
+            let infoDiv = document.getElementById('imageInfoPanel');
+            if (!infoDiv) {
+                infoDiv = document.createElement('div');
+                infoDiv.id = 'imageInfoPanel';
+                infoDiv.style.cssText = 'position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 1000; max-width: 500px;';
+                document.getElementById('viewer').appendChild(infoDiv);
+            }
+            
+            // 현재 표시 차원 계산
+            const viewport = viewer.viewport;
+            const zoom = viewport.getZoom();
+            const bounds = viewport.getBounds();
+            
+            // 패널에 정보 표시
+            infoDiv.innerHTML = `
+                <h3>원본 이미지 정보</h3>
+                <p>크기: ${info.dimensions[0]} x ${info.dimensions[1]} 픽셀</p>
+                <p>레벨 수: ${info.level_count}</p>
+                <p>타일 크기: ${info.tile_size || 2048}</p>
+                <h3>현재 뷰 정보</h3>
+                <p>확대 레벨: ${zoom.toFixed(2)}x</p>
+                <p>보이는 영역: ${Math.round(bounds.width * info.dimensions[0])} x ${Math.round(bounds.height * info.dimensions[1])} 픽셀</p>
+                <p>(X: ${Math.round(bounds.x * info.dimensions[0])}, Y: ${Math.round(bounds.y * info.dimensions[1])})</p>
+                <button id="closeInfoBtn" style="margin-top: 10px; padding: 5px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
+            `;
+            
+            // 닫기 버튼 이벤트 추가
+            document.getElementById('closeInfoBtn').onclick = function() {
+                infoDiv.style.display = 'none';
+            };
+            
+            infoDiv.style.display = 'block';
+        }
     </script>
 </body>
 </html> 

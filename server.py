@@ -274,9 +274,9 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        # 디버그 로그 활성화
-        print(f"\n=== Processing tile request ===")
-        print(f"Filename: {filename}, Level: {level}, X: {x}, Y: {y}")
+        # 간소화된 디버그 로그
+        if x % 10 == 0 and y % 10 == 0:  # 일부 타일에 대해서만 로그 출력
+            print(f"Processing tile: {level}/{x}/{y}")
         
         # 슬라이드 파일 경로
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
@@ -547,16 +547,25 @@ def get_slide_info(filename):
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
-        # 타일 크기를 정의 (서버의 TILE_SIZE 변수와 일치해야 함)
+        # 타일 크기를 정의
         tile_size = 2048
         
-        # SVS 파일 정보를 반환할 때 타일 크기도 포함
+        # 상세 로그 추가
+        print("=" * 50)
+        print(f"SVS 파일 정보 요청: {filename}")
+        print(f"원본 차원: {slide.dimensions}")
+        print(f"레벨 수: {slide.level_count}")
+        for i in range(slide.level_count):
+            print(f"  레벨 {i}: {slide.level_dimensions[i]}, 축소 계수: {slide.level_downsamples[i]}")
+        print("=" * 50)
+        
+        # SVS 파일 정보 반환
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
             'level_dimensions': slide.level_dimensions,
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': tile_size,  # 클라이언트에게 타일 크기 전달
+            'tile_size': tile_size,
             'properties': dict(slide.properties)
         }
         
