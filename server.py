@@ -270,61 +270,51 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        # 디버그 로그 - 주석 해제하여 사용
-        # print(f"\n=== Processing tile request ===")
-        # print(f"Filename: {filename}, Level: {level}, X: {x}, Y: {y}")
+        # 디버그 로그 활성화
+        print(f"\n=== Processing tile request ===")
+        print(f"Filename: {filename}, Level: {level}, X: {x}, Y: {y}")
         
         # 슬라이드 파일 경로
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
+        print(f"Slide path: {slide_path}")
+        
         if not os.path.exists(slide_path):
+            print(f"Error: Slide not found - {slide_path}")
             return jsonify({'error': 'Slide not found'}), 404
             
         # 캐시 키 생성 및 캐시 확인
         cache_key = f"{slide_path}_{level}_{x}_{y}"
         cached_tile = tile_cache.get(cache_key)
         if cached_tile is not None:
+            print(f"Cache hit for tile: {level}/{x}/{y}")
             output = io.BytesIO()
             cached_tile.save(output, format='JPEG', quality=90)
             output.seek(0)
             return send_file(output, mimetype='image/jpeg')
             
-        # 메모리 체크
-        process = psutil.Process()
-        if process.memory_info().rss / 1024 / 1024 / 1024 > MAX_MEMORY_GB * 0.9:
-            tile_cache.clear()
-            gc.collect()
-            
         # OpenSlide 객체 가져오기
         if slide_path not in slide_cache:
+            print(f"Creating new slide object for {slide_path}")
             slide_cache[slide_path] = openslide.OpenSlide(slide_path)
         slide = slide_cache[slide_path]
         
-        # 다운샘플링 계수 가져오기
-        level_downsample = slide.level_downsamples[level]
+        print(f"Slide dimensions: {slide.dimensions}")
+        print(f"Level count: {slide.level_count}")
+        print(f"Level dimensions: {slide.level_dimensions}")
+        print(f"Level downsamples: {slide.level_downsamples}")
         
-        # 타일 위치 계산 (수정된 방식)
-        # 타일 크기만 곱하고, 레벨 0에서 실제 픽셀 위치 계산
+        # 계산 방식 변경 - 레벨 0에서의 위치 계산
+        # 다운샘플링은 이미 OpenSlide에서 처리됨
         x_pos = int(x * TILE_SIZE)
         y_pos = int(y * TILE_SIZE)
         
-        # 다운샘플링 적용 (중요: level > 0일 때만)
-        if level > 0:
-            x_pos = int(x_pos * level_downsample)
-            y_pos = int(y_pos * level_downsample)
-        
-        # 경계 체크
-        width, height = slide.dimensions
-        if x_pos >= width or y_pos >= height:
-            # 범위를 벗어난 타일은 빈 이미지 반환
-            blank = PIL.Image.new('RGB', (TILE_SIZE, TILE_SIZE), (255, 255, 255))
-            output = io.BytesIO()
-            blank.save(output, format='JPEG', quality=90)
-            output.seek(0)
-            return send_file(output, mimetype='image/jpeg')
+        print(f"Reading region at: level={level}, pos=({x_pos}, {y_pos}), size={TILE_SIZE}")
         
         # 타일 읽기
         tile = slide.read_region((x_pos, y_pos), level, (TILE_SIZE, TILE_SIZE))
         tile = tile.convert('RGB')  # RGBA → RGB 변환
+        
+        print(f"Tile read successfully: {tile.size} mode={tile.mode}")
         
         # 캐시에 저장
         tile_cache[cache_key] = tile.copy()
@@ -334,13 +324,8 @@ def get_tile(filename, level, x, y):
         tile.save(output, format='JPEG', quality=90)
         output.seek(0)
         
-        response = make_response(send_file(
-            output,
-            mimetype='image/jpeg',
-            as_attachment=False
-        ))
-        response.headers['Cache-Control'] = 'public, max-age=31536000'
-        return response
+        print(f"Sending tile response: {level}/{x}/{y}")
+        return send_file(output, mimetype='image/jpeg')
         
     except Exception as e:
         print(f"Error in get_tile: {str(e)}")
