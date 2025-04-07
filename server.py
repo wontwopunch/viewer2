@@ -766,14 +766,11 @@ def check_slide(filename):
 
 @app.route('/slide/<filename>/simple_tile/<int:level>/<int:x>/<int:y>')
 def get_simple_tile(filename, level, x, y):
-    """완전히 단순화된 타일 로딩 함수"""
     try:
-        # 파일 경로
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
         if not os.path.exists(slide_path):
             return send_file(create_debug_tile("파일 없음"), mimetype='image/jpeg')
-            
-        # 슬라이드 로드
+        
         slide = None
         try:
             if slide_path in slide_cache:
@@ -783,51 +780,39 @@ def get_simple_tile(filename, level, x, y):
                 slide_cache[slide_path] = slide
         except Exception as e:
             return send_file(create_debug_tile(f"슬라이드 로드 오류: {str(e)}"), mimetype='image/jpeg')
-            
-        # 기본 설정
-        tile_size = 1024  # 작은 타일 크기 사용
+        
+        tile_size = 1024
         max_level = slide.level_count - 1
         
-        # 레벨 제한
         if level > max_level:
             level = max_level
-            
-        # 좌표 계산 (가장 단순한 방식)
+        
         if level == 0:
             x_pos = x * tile_size
             y_pos = y * tile_size
         else:
-            # 상위 레벨에서는 다운샘플링 적용
             factor = slide.level_downsamples[level]
             x_pos = int(x * tile_size * factor)
             y_pos = int(y * tile_size * factor)
-            
-        # 경계 확인
+        
         width, height = slide.dimensions
         if x_pos >= width or y_pos >= height:
             return send_file(create_debug_tile(f"범위 초과 ({x_pos}, {y_pos})"), mimetype='image/jpeg')
-            
-        # 수정: 읽기 크기 제한
+        
         read_width = min(tile_size, width - x_pos)
         read_height = min(tile_size, height - y_pos)
         
-        # 타일 읽기
         try:
-            # 중요: 레벨 0에서 읽도록 변경
             if level == 0:
                 tile = slide.read_region((x_pos, y_pos), 0, (read_width, read_height))
             else:
-                # 높은 레벨에서는 레벨 0 좌표로 변환하여 읽음
                 tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
-                
-            # 포맷 변환
+            
             tile = tile.convert('RGB')
             
-            # 크기 조정 필요시
             if tile.size != (tile_size, tile_size):
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
-                
-            # 응답
+            
             output = io.BytesIO()
             tile.save(output, format='JPEG', quality=90)
             output.seek(0)
@@ -836,7 +821,6 @@ def get_simple_tile(filename, level, x, y):
             import traceback
             print(traceback.format_exc())
             return send_file(create_debug_tile(f"타일 읽기 오류: {str(e)}"), mimetype='image/jpeg')
-            
     except Exception as e:
         return send_file(create_debug_tile(f"전체 오류: {str(e)}"), mimetype='image/jpeg')
 
