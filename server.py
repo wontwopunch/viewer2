@@ -20,6 +20,8 @@ import re
 from werkzeug.serving import run_simple
 from datetime import datetime
 import numpy as np
+import logging
+from logging.handlers import RotatingFileHandler
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -849,6 +851,13 @@ def server_status():
         },
         'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
+
+# Flask 앱 초기화 후에 추가
+if __name__ != '__main__':
+    # 로그 파일 설정
+    handler = RotatingFileHandler('server.log', maxBytes=10000, backupCount=1)
+    handler.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
 
 if __name__ == '__main__':
     # 디렉터리 확인 및 생성
