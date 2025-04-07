@@ -19,6 +19,7 @@ from threading import Timer
 import re
 from werkzeug.serving import run_simple
 from datetime import datetime
+import numpy as np
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -698,6 +699,147 @@ def get_public_tile(filename, level, x, y):
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(STATIC_FOLDER, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.route('/slide/<filename>/check')
+def check_slide(filename):
+    try:
+        slide_path = os.path.join(UPLOAD_FOLDER, filename)
+        
+        # 파일 존재 확인
+        if not os.path.exists(slide_path):
+            return jsonify({
+                'status': 'error',
+                'message': '파일을 찾을 수 없습니다',
+                'path': slide_path
+            })
+        
+        # 파일 크기 확인
+        file_size = os.path.getsize(slide_path) / (1024 * 1024)  # MB 단위
+        
+        result = {
+            'status': 'checking',
+            'filename': filename,
+            'path': slide_path,
+            'filesize_mb': round(file_size, 2),
+            'exists': True,
+            'details': []
+        }
+        
+        # OpenSlide로 파일 열기 시도
+        try:
+            slide = openslide.OpenSlide(slide_path)
+            result['status'] = 'success'
+            result['can_open'] = True
+            result['dimensions'] = slide.dimensions
+            result['level_count'] = slide.level_count
+            result['level_dimensions'] = slide.level_dimensions
+            result['level_downsamples'] = [float(ds) for ds in slide.level_downsamples]
+            result['properties'] = dict(slide.properties)
+            
+            # 첫 번째 타일 읽기 시도
+            try:
+                test_tile = slide.read_region((0, 0), 0, (256, 256))
+                result['can_read_tile'] = True
+                result['details'].append("타일 읽기 성공")
+                
+                # 타일 이미지 상태 확인
+                tile_array = np.array(test_tile)
+                if np.all(tile_array[:,:,0:3] == 255):  # 모든 픽셀이 흰색인지 확인
+                    result['details'].append("경고: 타일 내용이 모두 흰색입니다")
+                else:
+                    result['details'].append("타일에 내용이 있습니다")
+            except Exception as e:
+                result['can_read_tile'] = False
+                result['details'].append(f"타일 읽기 오류: {str(e)}")
+                
+        except Exception as e:
+            result['status'] = 'error'
+            result['can_open'] = False
+            result['error'] = str(e)
+            result['details'].append(f"파일 열기 오류: {str(e)}")
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        })
+
+@app.route('/slide/<filename>/simple_tile/<int:level>/<int:x>/<int:y>')
+def get_simple_tile(filename, level, x, y):
+    """완전히 단순화된 타일 로딩 함수"""
+    try:
+        # 파일 경로
+        slide_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.exists(slide_path):
+            return send_file(create_debug_tile("파일 없음"), mimetype='image/jpeg')
+            
+        # 슬라이드 로드
+        slide = None
+        try:
+            if slide_path in slide_cache:
+                slide = slide_cache[slide_path]
+            else:
+                slide = openslide.OpenSlide(slide_path)
+                slide_cache[slide_path] = slide
+        except Exception as e:
+            return send_file(create_debug_tile(f"슬라이드 로드 오류: {str(e)}"), mimetype='image/jpeg')
+            
+        # 기본 설정
+        tile_size = 1024  # 작은 타일 크기 사용
+        max_level = slide.level_count - 1
+        
+        # 레벨 제한
+        if level > max_level:
+            level = max_level
+            
+        # 좌표 계산 (가장 단순한 방식)
+        if level == 0:
+            x_pos = x * tile_size
+            y_pos = y * tile_size
+        else:
+            # 상위 레벨에서는 다운샘플링 적용
+            factor = slide.level_downsamples[level]
+            x_pos = int(x * tile_size * factor)
+            y_pos = int(y * tile_size * factor)
+            
+        # 경계 확인
+        width, height = slide.dimensions
+        if x_pos >= width or y_pos >= height:
+            return send_file(create_debug_tile(f"범위 초과 ({x_pos}, {y_pos})"), mimetype='image/jpeg')
+            
+        # 수정: 읽기 크기 제한
+        read_width = min(tile_size, width - x_pos)
+        read_height = min(tile_size, height - y_pos)
+        
+        # 타일 읽기
+        try:
+            # 중요: 레벨 0에서 읽도록 변경
+            if level == 0:
+                tile = slide.read_region((x_pos, y_pos), 0, (read_width, read_height))
+            else:
+                # 높은 레벨에서는 레벨 0 좌표로 변환하여 읽음
+                tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
+                
+            # 포맷 변환
+            tile = tile.convert('RGB')
+            
+            # 크기 조정 필요시
+            if tile.size != (tile_size, tile_size):
+                tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
+                
+            # 응답
+            output = io.BytesIO()
+            tile.save(output, format='JPEG', quality=90)
+            output.seek(0)
+            return send_file(output, mimetype='image/jpeg')
+        except Exception as e:
+            import traceback
+            print(traceback.format_exc())
+            return send_file(create_debug_tile(f"타일 읽기 오류: {str(e)}"), mimetype='image/jpeg')
+            
+    except Exception as e:
+        return send_file(create_debug_tile(f"전체 오류: {str(e)}"), mimetype='image/jpeg')
 
 if __name__ == '__main__':
     # 디렉터리 확인 및 생성
