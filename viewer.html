@@ -342,6 +342,27 @@
     </div>
 
     <script>
+
+    var viewer = OpenSeadragon({
+                id: "openseadragon1",
+                prefixUrl: "images/",
+                tileSources: {
+                    Image: {
+                        xmlns: "http://schemas.microsoft.com/deepzoom/2008",
+                        Url: "http://188.166.255.196:5000/slide/C23-166_F_.svs/simple_tile/",
+                        Format: "jpeg",
+                        Overlap: "2",
+                        TileSize: 2048,
+                        Size: {
+                            Width: 10000,  // 이미지의 전체 너비
+                            Height: 10000  // 이미지의 전체 높이
+                        }
+                    }
+                },
+                showNavigator: true,
+                minZoomLevel: 0.1,
+                maxZoomLevel: 10
+            });
         // URL에서 파일명 가져오기
         const urlParams = new URLSearchParams(window.location.search);
         let filename = urlParams.get('file');
@@ -409,7 +430,7 @@
                         tileSources: {
                             width: info.dimensions[0],
                             height: info.dimensions[1],
-                            tileSize: 2048,
+                            tileSize: info.tile_size,
                             
                             maxLevel: info.level_count - 1,
                             minLevel: 0,
