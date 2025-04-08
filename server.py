@@ -781,7 +781,7 @@ def get_simple_tile(filename, level, x, y):
         except Exception as e:
             return send_file(create_debug_tile(f"슬라이드 로드 오류: {str(e)}"), mimetype='image/jpeg')
         
-        tile_size = 2048  # 타일 크기를 2048로 변경
+        tile_size = 2048
         max_level = slide.level_count - 1
         
         if level > max_level:
@@ -809,6 +809,11 @@ def get_simple_tile(filename, level, x, y):
                 tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
             
             tile = tile.convert('RGB')
+            
+            # 디버깅: 타일이 흰색인지 확인
+            tile_array = np.array(tile)
+            if np.all(tile_array[:, :, :3] == 255):
+                print("경고: 타일 내용이 모두 흰색입니다")
             
             if tile.size != (tile_size, tile_size):
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
