@@ -409,7 +409,7 @@
                         tileSources: {
                             width: info.dimensions[0],
                             height: info.dimensions[1],
-                            tileSize: info.tile_size || 2048,
+                            tileSize: 2048,
                             
                             maxLevel: info.level_count - 1,
                             minLevel: 0,
@@ -586,26 +586,6 @@
             
             infoDiv.style.display = 'block';
         }
-
-        // 대체 뷰어 시도 전 info 변수 확인
-        setTimeout(() => {
-            // 첫 번째 타일 로드 실패 확인 로직 수정
-            const loadedTiles = document.querySelectorAll('.openseadragon-canvas img').length;
-            console.log(`로드된 타일 수: ${loadedTiles}`);
-            
-            // info 변수 확인
-            console.log("슬라이드 정보 확인:", info);
-            
-            if (loadedTiles < 5) {  // 최소 5개 이상의 타일이 로드되어야 성공으로 간주
-                console.log("타일 로드 실패 감지 - 대체 뷰어 시도");
-                
-                // info 변수 사용 전 명시적 확인
-                if (typeof info !== 'undefined' && info && info.dimensions) {
-                }
-            } else {
-                console.log("충분한 타일이 로드됨 - 정상 작동 중");
-            }
-        }, 5000);
 
         // 서버 상태 확인 함수
         function checkServerStatus() {

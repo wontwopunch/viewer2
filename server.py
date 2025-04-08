@@ -781,7 +781,7 @@ def get_simple_tile(filename, level, x, y):
         except Exception as e:
             return send_file(create_debug_tile(f"슬라이드 로드 오류: {str(e)}"), mimetype='image/jpeg')
         
-        tile_size = 1024
+        tile_size = 2048  # 타일 크기를 2048로 변경
         max_level = slide.level_count - 1
         
         if level > max_level:
