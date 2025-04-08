@@ -813,7 +813,9 @@ def get_simple_tile(filename, level, x, y):
             # 디버깅: 타일이 흰색인지 확인
             tile_array = np.array(tile)
             if np.all(tile_array[:, :, :3] == 255):
-                print("경고: 타일 내용이 모두 흰색입니다")
+                print(f"경고: 타일 ({x}, {y}) 내용이 모두 흰색입니다")
+            else:
+                print(f"타일 ({x}, {y})에 내용이 있습니다")
             
             if tile.size != (tile_size, tile_size):
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
