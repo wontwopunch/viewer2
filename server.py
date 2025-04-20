@@ -581,12 +581,15 @@ def get_slide_info(filename):
         print("=" * 50)
         
         # SVS 파일 정보 반환
+        tile_width = int(slide.properties.get("openslide.level[0].tile-width", 2048))
+        tile_height = int(slide.properties.get("openslide.level[0].tile-height", 2048))
+
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
             'level_dimensions': slide.level_dimensions,
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': tile_size,
+            'tile_size': [tile_width, tile_height],  # ← 수정된 부분
             'properties': dict(slide.properties)
         }
         
@@ -633,12 +636,15 @@ def get_public_slide_info(filename):
         
         tile_size = 2048
         
+        tile_width = int(slide.properties.get("openslide.level[0].tile-width", 2048))
+        tile_height = int(slide.properties.get("openslide.level[0].tile-height", 2048))
+
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
             'level_dimensions': slide.level_dimensions,
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': tile_size,
+            'tile_size': [tile_width, tile_height],  # ← 수정된 부분
             'properties': dict(slide.properties)
         }
         
