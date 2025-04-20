@@ -319,6 +319,7 @@
                     .then(data => {
                         info = data;
                         console.log('Slide info received:', info);
+                        console.log("📏 OpenSeadragon에 전달할 사이즈:", info.dimensions[0], info.dimensions[1]);
                         
                         const loadingOverlay = document.getElementById('loadingOverlay');
                         if (loadingOverlay) {

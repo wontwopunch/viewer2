@@ -816,8 +816,12 @@ def get_simple_tile(filename, level, x, y):
         print(f"📐 읽을 영역: {read_width}x{read_height}")
 
         try:
+            print(f"📏 OpenSlide에서 읽는 좌표: (x={x_pos}, y={y_pos}), 크기: {read_width}x{read_height}, level={level}")
             tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
             tile = tile.convert('RGB')
+            tile_array = np.array(tile)
+            non_white_ratio = 1.0 - np.mean(np.all(tile_array == 255, axis=2))
+            print(f"🎨 비흰색 픽셀 비율: {non_white_ratio:.4f}")
             print("🖼️ 타일 변환 완료")
 
             tile_array = np.array(tile)
