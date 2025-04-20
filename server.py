@@ -749,6 +749,7 @@ def check_slide(filename):
         })
 
 
+
 @app.route('/slide/<filename>/simple_tile/<int:level>/<int:x>/<int:y>')
 def get_simple_tile(filename, level, x, y):
     try:
@@ -766,25 +767,33 @@ def get_simple_tile(filename, level, x, y):
 
         level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
-        width, height = slide.level_dimensions[level]
+        level_dimensions = slide.level_dimensions[level]
         tile_size = 2048
 
-        # level 기준 좌표 → 레벨 0 기준 좌표로 변환
-        x_pos = int(x * tile_size * downsample)
-        y_pos = int(y * tile_size * downsample)
+        # 레벨 좌표 기준 → 레벨 0 기준 좌표로 보정
+        x_pos_0 = int(x * tile_size * downsample)
+        y_pos_0 = int(y * tile_size * downsample)
 
-        read_width = int(min(tile_size * downsample, slide.dimensions[0] - x_pos))
-        read_height = int(min(tile_size * downsample, slide.dimensions[1] - y_pos))
+        # 읽을 크기를 원래 슬라이드 기준에서 계산
+        read_width_0 = int(min(tile_size * downsample, slide.dimensions[0] - x_pos_0))
+        read_height_0 = int(min(tile_size * downsample, slide.dimensions[1] - y_pos_0))
 
-        if x_pos >= slide.dimensions[0] or y_pos >= slide.dimensions[1]:
-            return create_debug_tile("타일 오류: 범위 초과", x, y, level)
+        if read_width_0 <= 0 or read_height_0 <= 0:
+            return create_debug_tile("⚠️ 읽기 크기 비정상", x, y, level)
 
-        # read_region은 level 0 기준 좌표, level을 따로 지정
-        region = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size)).convert('RGB')
+        # region size = level 기준 크기
+        region_size = (int(read_width_0 / downsample), int(read_height_0 / downsample))
+        region = slide.read_region((x_pos_0, y_pos_0), level, region_size).convert('RGB')
 
+        # 타일 크기 맞추기
+        if region.size != (tile_size, tile_size):
+            print(f"📐 resize: {region.size} → {tile_size}x{tile_size}")
+            region = region.resize((tile_size, tile_size), PIL.Image.LANCZOS)
+
+        # 흰색만인지 체크
         region_array = np.array(region)
         if np.all(region_array[:, :, :3] == 255):
-            print(f"⚠️ 타일이 흰색입니다 - level={level}, x={x}, y={y}, pos=({x_pos}, {y_pos})")
+            print(f"⚠️ 흰 타일 - level={level}, x={x}, y={y}, pos=({x_pos_0}, {y_pos_0})")
         else:
             print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
 
