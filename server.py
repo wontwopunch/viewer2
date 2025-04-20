@@ -345,10 +345,10 @@ def get_tile(filename, level, x, y):
             
             # 응답 생성
             output = io.BytesIO()
-            tile.save(output, format='PNG')
+            tile.save(output, format='JPEG')
             output.seek(0)
 
-            response = make_response(send_file(output, mimetype='image/png', as_attachment=False))
+            response = send_file(output, mimetype='image/jpeg', as_attachment=False)
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
 
@@ -386,10 +386,10 @@ def create_debug_tile(message="Error"):
     draw.text((100, 150), message, fill=(255, 0, 0), font=font)
 
     output = io.BytesIO()
-    tile.save(output, format='PNG')
+    tile.save(output, format='JPEG')
     output.seek(0)
 
-    response = make_response(send_file(output, mimetype='image/png', as_attachment=False))
+    response = send_file(output, mimetype='image/jpeg', as_attachment=False)
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
@@ -670,7 +670,7 @@ def get_public_tile(filename, level, x, y):
         cached_tile = tile_cache.get(cache_key)
         if cached_tile is not None:
             output = io.BytesIO()
-            cached_tile.save(output, format='PNG')
+            cached_tile.save(output, format='JPEG')
             output.seek(0)
             response = make_response(send_file(
                 output,
@@ -689,7 +689,7 @@ def get_public_tile(filename, level, x, y):
         tile_cache[cache_key] = tile.copy()
         
         output = io.BytesIO()
-        tile.save(output, format='PNG')
+        tile.save(output, format='JPEG')
         output.seek(0)
         
         response = make_response(send_file(
@@ -840,11 +840,11 @@ def get_simple_tile(filename, level, x, y):
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
 
             output = io.BytesIO()
-            tile.save(output, format='PNG')
+            tile.save(output, format='JPEG')
             output.seek(0)
             print("✅ 타일 생성 및 반환 완료")
 
-            return send_file(output, mimetype='image/png')
+            return send_file(output, mimetype='image/jpeg')
 
         except Exception as e:
             import traceback
