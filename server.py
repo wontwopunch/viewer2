@@ -327,6 +327,10 @@ def get_tile(filename, level, x, y):
         print(f"📏 읽는 위치: ({x_pos}, {y_pos}), 크기: {read_width}x{read_height}")
 
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
+        if level == 0 and x == 0 and y == 0:
+            test_output_path = os.path.join(BASE_DIR, 'debug_tile.jpg')
+            tile.save(test_output_path)
+            print(f"🧪 타일 저장됨: {test_output_path}")
 
         # 내용이 있는지 확인
         tile_array = np.array(tile)
@@ -804,6 +808,10 @@ def get_simple_tile(filename, level, x, y):
         read_height = min(read_height, height - y_pos)
 
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
+        if level == 0 and x == 0 and y == 0:
+            test_output_path = os.path.join(BASE_DIR, 'debug_tile.jpg')
+            tile.save(test_output_path)
+            print(f"🧪 타일 저장됨: {test_output_path}")
 
         tile_array = np.array(tile)
         if np.all(tile_array[:, :, :3] == 255):
@@ -858,3 +866,8 @@ if __name__ == '__main__':
     
     # 디버그 모드에서 실행 (개발 중에만)
     app.run(host='0.0.0.0', port=5000, debug=False)
+
+
+@app.route('/debug_tile')
+def debug_tile():
+    return send_file('debug_tile.jpg', mimetype='image/jpeg')
