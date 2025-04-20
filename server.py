@@ -279,63 +279,36 @@ loading_tiles = set()
 @app.route('/slide/<filename>/tile/<int:level>/<int:x>/<int:y>')
 def get_tile(filename, level, x, y):
     try:
-        print(f"\n===== 타일 요청: {filename}, level={level}, x={x}, y={y} =====")
-
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        if not os.path.exists(slide_path):
-            print(f"❌ 슬라이드 파일 없음: {slide_path}")
-            return jsonify({'error': 'Slide not found'}), 404
+        if not os.path.exists(slide_path): return jsonify({'error': '파일 없음'}), 404
+        slide = get_slide(slide_path)
 
-        slide = slide_cache.get(slide_path)
-        if slide is None:
-            slide = openslide.OpenSlide(slide_path)
-            slide_cache[slide_path] = slide
-        else:
-            print("✅ 슬라이드 캐시에서 불러옴")
-
-        width, height = slide.dimensions
         level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
+        tile_size = TILE_SIZE
 
-        tile_size = 2048
-        x_pos = int(x * tile_size * downsample)
-        y_pos = int(y * tile_size * downsample)
+        x_pos_0 = int(x * tile_size * downsample)
+        y_pos_0 = int(y * tile_size * downsample)
+        read_width_0 = int(min(tile_size * downsample, slide.dimensions[0] - x_pos_0))
+        read_height_0 = int(min(tile_size * downsample, slide.dimensions[1] - y_pos_0))
 
-        read_width = min(tile_size * downsample, width - x_pos)
-        read_height = min(tile_size * downsample, height - y_pos)
+        if read_width_0 <= 0 or read_height_0 <= 0:
+            return create_debug_tile("⚠️ 읽기 크기 비정상", x, y, level)
 
-        region_width = int(read_width / downsample)
-        region_height = int(read_height / downsample)
-
-        tile = slide.read_region((x_pos, y_pos), level, (region_width, region_height)).convert('RGB')
-
-        if region_width != tile_size or region_height != tile_size:
+        region_size = (int(read_width_0 / downsample), int(read_height_0 / downsample))
+        tile = slide.read_region((x_pos_0, y_pos_0), level, region_size).convert('RGB')
+        if tile.size != (tile_size, tile_size):
             tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
-
-        tile_array = np.array(tile)
-        if np.all(tile_array[:, :, :3] == 255):
-            print(f"⚠️ 타일이 흰색입니다 - level={level}, x={x}, y={y}")
-        else:
-            print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
 
         output = io.BytesIO()
         tile.save(output, format='JPEG')
         output.seek(0)
-
-        response = send_file(output, mimetype='image/jpeg', as_attachment=False)
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response
-
+        return send_file(output, mimetype='image/jpeg')
     except Exception as e:
-        import traceback
-        print(f"🧨 예외 발생: {str(e)}")
-        print(traceback.format_exc())
-        return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
+        return send_file(create_debug_tile(f"오류: {str(e)}", x, y, level), mimetype='image/jpeg')
 
 
 
-
-# 디버그 타일 생성 함수 추가
 # 디버그 타일 생성 함수 개선
 def create_debug_tile(message="Error", x=None, y=None, level=None):
     """디버그 정보가 포함된 타일 생성 및 CORS 포함 응답"""
@@ -748,8 +721,6 @@ def check_slide(filename):
             'message': str(e)
         })
 
-
-
 @app.route('/slide/<filename>/simple_tile/<int:level>/<int:x>/<int:y>')
 def get_simple_tile(filename, level, x, y):
     try:
@@ -758,7 +729,7 @@ def get_simple_tile(filename, level, x, y):
         print(f"🔍 요청된 타일: level={level}, x={x}, y={y}")
 
         if not os.path.exists(slide_path):
-            return create_debug_tile(f"타일 오류: 파일 없음")
+            return create_debug_tile("타일 오류: 파일 없음")
 
         slide = slide_cache.get(slide_path)
         if slide is None:
@@ -767,47 +738,29 @@ def get_simple_tile(filename, level, x, y):
 
         level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
-        level_dimensions = slide.level_dimensions[level]
-        tile_size = 2048
+        tile_size = TILE_SIZE
 
-        # 레벨 좌표 기준 → 레벨 0 기준 좌표로 보정
         x_pos_0 = int(x * tile_size * downsample)
         y_pos_0 = int(y * tile_size * downsample)
 
-        # 읽을 크기를 원래 슬라이드 기준에서 계산
         read_width_0 = int(min(tile_size * downsample, slide.dimensions[0] - x_pos_0))
         read_height_0 = int(min(tile_size * downsample, slide.dimensions[1] - y_pos_0))
 
         if read_width_0 <= 0 or read_height_0 <= 0:
             return create_debug_tile("⚠️ 읽기 크기 비정상", x, y, level)
 
-        # region size = level 기준 크기
         region_size = (int(read_width_0 / downsample), int(read_height_0 / downsample))
         region = slide.read_region((x_pos_0, y_pos_0), level, region_size).convert('RGB')
 
-        # 타일 크기 맞추기
         if region.size != (tile_size, tile_size):
-            print(f"📐 resize: {region.size} → {tile_size}x{tile_size}")
             region = region.resize((tile_size, tile_size), PIL.Image.LANCZOS)
-
-        # 흰색만인지 체크
-        region_array = np.array(region)
-        if np.all(region_array[:, :, :3] == 255):
-            print(f"⚠️ 흰 타일 - level={level}, x={x}, y={y}, pos=({x_pos_0}, {y_pos_0})")
-        else:
-            print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
 
         output = io.BytesIO()
         region.save(output, format='JPEG')
         output.seek(0)
         return send_file(output, mimetype='image/jpeg')
-
     except Exception as e:
-        import traceback
-        print(f"🧨 예외 발생: {str(e)}")
-        print(traceback.format_exc())
-        return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
-
+        return send_file(create_debug_tile(str(e), x, y, level), mimetype='image/jpeg')
 
 
 
