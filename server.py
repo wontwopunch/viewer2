@@ -761,38 +761,36 @@ def get_simple_tile(filename, level, x, y):
         print(f"🔍 요청된 타일: level={level}, x={x}, y={y}")
 
         if not os.path.exists(slide_path):
-            return create_debug_tile(f"타일 오류: {str(e)}")
+            return create_debug_tile(f"타일 오류: 파일 없음")
 
         slide = slide_cache.get(slide_path)
         if slide is None:
             slide = openslide.OpenSlide(slide_path)
             slide_cache[slide_path] = slide
 
-        # 슬라이드 기본 정보
         width, height = slide.dimensions
         level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
 
-        # 타일 크기 동적으로 설정 (정사각형만 지원)
         tile_width = int(slide.properties.get("openslide.level[0].tile-width", 240))
-        tile_height = int(slide.properties.get("openslide.level[0].tile-height", 240))
-        tile_size = tile_width  # 둘 다 240이지만 정사각형 기준으로 고정
-
-        # 타일 인덱스 유효성 검사
-        tiles_x = math.ceil(width / tile_size)
-        tiles_y = math.ceil(height / tile_size)
-        if x >= tiles_x or y >= tiles_y:
-            return create_debug_tile(f"타일 오류: {str(e)}")
+        tile_size = tile_width
 
         # 좌표 계산
         x_pos = int(x * tile_size * downsample)
         y_pos = int(y * tile_size * downsample)
-        read_width = min(tile_size, width - x_pos)
-        read_height = min(tile_size, height - y_pos)
+
+        # 읽기 크기 (레벨 N 기준)
+        read_width = int(tile_size * downsample)
+        read_height = int(tile_size * downsample)
+
+        if x_pos >= width or y_pos >= height:
+            return create_debug_tile(f"타일 오류: 범위 초과")
+
+        read_width = min(read_width, width - x_pos)
+        read_height = min(read_height, height - y_pos)
 
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
 
-        # 필요 시 OpenSeadragon 맞춤 사이즈로 리사이즈
         if read_width != tile_size or read_height != tile_size:
             tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
 
@@ -807,8 +805,6 @@ def get_simple_tile(filename, level, x, y):
         print(f"🧨 예외 발생: {str(e)}")
         print(traceback.format_exc())
         return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
-
-
 
 
 
