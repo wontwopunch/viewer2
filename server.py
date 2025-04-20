@@ -795,11 +795,12 @@ def get_simple_tile(filename, level, x, y):
         tile_width = int(slide.properties.get("openslide.level[0].tile-width", 240))
         tile_size = tile_width
 
-        x_pos = x * tile_size
-        y_pos = y * tile_size
+        factor = slide.level_downsamples[level]
+        x_pos = int(x * tile_size * factor)
+        y_pos = int(y * tile_size * factor)
 
-        read_width = tile_size
-        read_height = tile_size
+        read_width = min(tile_size, width - x_pos)
+        read_height = min(tile_size, height - y_pos)
 
         if x_pos >= width or y_pos >= height:
             return create_debug_tile("타일 오류: 범위 초과", x, y, level)
@@ -808,10 +809,9 @@ def get_simple_tile(filename, level, x, y):
         read_height = min(read_height, height - y_pos)
 
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
-        if level == 0 and x == 0 and y == 0:
-            test_output_path = os.path.join(BASE_DIR, 'debug_tile.jpg')
-            tile.save(test_output_path)
-            print(f"🧪 타일 저장됨: {test_output_path}")
+        if read_width != tile_size or read_height != tile_size:
+            print(f"📐 resize 발생: {read_width}x{read_height} → {tile_size}x{tile_size}")
+            tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
 
         tile_array = np.array(tile)
         if np.all(tile_array[:, :, :3] == 255):
