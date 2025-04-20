@@ -777,7 +777,6 @@ def get_simple_tile(filename, level, x, y):
             print("❌ 파일이 존재하지 않음.")
             return send_file(create_debug_tile("파일 없음"), mimetype='image/jpeg')
 
-        slide = None
         try:
             if slide_path in slide_cache:
                 slide = slide_cache[slide_path]
@@ -804,6 +803,7 @@ def get_simple_tile(filename, level, x, y):
             factor = slide.level_downsamples[level]
             x_pos = int(x * tile_size * factor)
             y_pos = int(y * tile_size * factor)
+
         print(f"📏 계산된 좌표: x_pos={x_pos}, y_pos={y_pos}")
 
         width, height = slide.dimensions
@@ -814,17 +814,14 @@ def get_simple_tile(filename, level, x, y):
         read_width = min(tile_size, width - x_pos)
         read_height = min(tile_size, height - y_pos)
         print(f"📐 읽을 영역: {read_width}x{read_height}")
+        print(f"📏 OpenSlide에서 읽는 좌표: (x={x_pos}, y={y_pos}), 크기: {read_width}x{read_height}, level={level}")
 
         try:
-            print(f"📏 OpenSlide에서 읽는 좌표: (x={x_pos}, y={y_pos}), 크기: {read_width}x{read_height}, level={level}")
-            tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
-            tile = tile.convert('RGB')
+            tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
             tile_array = np.array(tile)
             non_white_ratio = 1.0 - np.mean(np.all(tile_array == 255, axis=2))
-            print(f"🎨 비흰색 픽셀 비율: {non_white_ratio:.4f}")
-            print("🖼️ 타일 변환 완료")
+            print(f"🎨 비흰색 픽셀 비율: {non_white_ratio:.4f} (x={x}, y={y}, level={level})")
 
-            tile_array = np.array(tile)
             if np.all(tile_array[:, :, :3] == 255):
                 print(f"⚪ 타일 내용이 모두 흰색입니다: x={x}, y={y}")
             else:
@@ -840,6 +837,7 @@ def get_simple_tile(filename, level, x, y):
             print("✅ 타일 생성 및 반환 완료")
 
             return send_file(output, mimetype='image/png')
+
         except Exception as e:
             import traceback
             print(f"🧨 타일 읽기 실패: {str(e)}")
