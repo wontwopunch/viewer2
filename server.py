@@ -281,13 +281,12 @@ loading_tiles = set()
 def get_tile(filename, level, x, y):
     try:
         print(f"\n===== 타일 요청: {filename}, level={level}, x={x}, y={y} =====")
-        
+
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
         if not os.path.exists(slide_path):
             print(f"❌ 슬라이드 파일 없음: {slide_path}")
             return jsonify({'error': 'Slide not found'}), 404
 
-        # 슬라이드 캐시 로딩
         slide = slide_cache.get(slide_path)
         if slide is None:
             print(f"📂 슬라이드를 새로 엶: {slide_path}")
@@ -302,18 +301,25 @@ def get_tile(filename, level, x, y):
         else:
             print("✅ 슬라이드 캐시에서 불러옴")
 
-        tile_size = 2048
+        # 슬라이드 메타 정보
+        width, height = slide.dimensions
         level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
 
-        # 좌표 계산 (레벨 0 기준)
+        # 서버 기본 타일 크기
+        tile_size = 2048
+
+        # 타일 인덱스 최대값 계산 (뷰어가 요청 가능한 최대 x/y)
+        tiles_x = math.ceil(width / (tile_size * downsample))
+        tiles_y = math.ceil(height / (tile_size * downsample))
+
+        if x >= tiles_x or y >= tiles_y:
+            print(f"🚫 타일 인덱스 초과: x={x}, y={y}, max=({tiles_x - 1}, {tiles_y - 1})")
+            return send_file(create_debug_tile(f"index 초과: x={x}, y={y}"), mimetype='image/jpeg')
+
+        # 좌표 계산 (레벨 기준)
         x_pos = int(x * tile_size * downsample)
         y_pos = int(y * tile_size * downsample)
-
-        width, height = slide.dimensions
-        if x_pos >= width or y_pos >= height:
-            print(f"🚫 범위를 벗어남: ({x_pos}, {y_pos})")
-            return send_file(create_debug_tile(f"범위 초과: x={x}, y={y}"), mimetype='image/jpeg')
 
         read_width = min(tile_size, width - x_pos)
         read_height = min(tile_size, height - y_pos)
@@ -338,6 +344,7 @@ def get_tile(filename, level, x, y):
         print(f"🧨 예외 발생: {str(e)}")
         print(traceback.format_exc())
         return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
+
 
 
 # 디버그 타일 생성 함수 추가
@@ -744,6 +751,8 @@ def check_slide(filename):
             'status': 'error',
             'message': str(e)
         })
+
+
 @app.route('/slide/<filename>/simple_tile/<int:level>/<int:x>/<int:y>')
 def get_simple_tile(filename, level, x, y):
     try:
@@ -752,50 +761,43 @@ def get_simple_tile(filename, level, x, y):
         print(f"🔍 요청된 타일: level={level}, x={x}, y={y}")
 
         if not os.path.exists(slide_path):
-            print("❌ 파일이 존재하지 않음.")
             return send_file(create_debug_tile("파일 없음"), mimetype='image/jpeg')
 
-        # 슬라이드 객체 로딩
         slide = slide_cache.get(slide_path)
         if slide is None:
-            print("📂 슬라이드를 새로 엶")
             slide = openslide.OpenSlide(slide_path)
             slide_cache[slide_path] = slide
-        else:
-            print("✅ 슬라이드 캐시에서 불러옴")
 
-        tile_size = 2048
-        level = min(level, slide.level_count - 1)  # 안전하게 조정
+        # 슬라이드 기본 정보
+        width, height = slide.dimensions
+        level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
 
+        # 타일 크기 동적으로 설정 (정사각형만 지원)
+        tile_width = int(slide.properties.get("openslide.level[0].tile-width", 240))
+        tile_height = int(slide.properties.get("openslide.level[0].tile-height", 240))
+        tile_size = tile_width  # 둘 다 240이지만 정사각형 기준으로 고정
+
+        # 타일 인덱스 유효성 검사
+        tiles_x = math.ceil(width / tile_size)
+        tiles_y = math.ceil(height / tile_size)
+        if x >= tiles_x or y >= tiles_y:
+            return send_file(create_debug_tile(f"범위 초과: x={x}, y={y}"), mimetype='image/jpeg')
+
+        # 좌표 계산
         x_pos = int(x * tile_size * downsample)
         y_pos = int(y * tile_size * downsample)
-        width, height = slide.dimensions
-
-        # 범위 검사: 잘라내기 (슬라이드 영역을 벗어나면 디버그 타일 리턴)
-        if x_pos >= width or y_pos >= height:
-            print(f"🚫 범위를 벗어남: ({x_pos}, {y_pos})")
-            return send_file(create_debug_tile(f"범위 초과 ({x}, {y})"), mimetype='image/jpeg')
-
         read_width = min(tile_size, width - x_pos)
         read_height = min(tile_size, height - y_pos)
 
-        print(f"📐 읽을 영역: {read_width}x{read_height}")
-        print(f"📏 읽는 위치: ({x_pos}, {y_pos})")
-
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
 
-        # 디버깅용 분석 로그
-        tile_array = np.array(tile)
-        non_white_ratio = 1.0 - np.mean(np.all(tile_array == 255, axis=2))
-        print(f"🎨 비흰색 픽셀 비율: {non_white_ratio:.4f} (x={x}, y={y})")
-
-        # 사이즈가 작을 경우 OpenSeadragon 맞춤 리사이즈
+        # 필요 시 OpenSeadragon 맞춤 사이즈로 리사이즈
         if read_width != tile_size or read_height != tile_size:
             tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
 
         output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=85)
+        tile.save(output, format='JPEG')
         output.seek(0)
 
         return send_file(output, mimetype='image/jpeg')
@@ -805,6 +807,7 @@ def get_simple_tile(filename, level, x, y):
         print(f"🧨 예외 발생: {str(e)}")
         print(traceback.format_exc())
         return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
+
 
 
 
