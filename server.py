@@ -228,9 +228,8 @@ def create_tile(slide, level, x, y, tile_size, filename):
             gc.collect()
         
         # 타일 크기 계산 단순화
-        factor = slide.level_downsamples[level]
-        x_pos = int(x * TILE_SIZE * factor)
-        y_pos = int(y * TILE_SIZE * factor)
+        x_pos = x * TILE_SIZE
+        y_pos = y * TILE_SIZE
         
         # 경계 체크
         if x_pos >= slide.dimensions[0] or y_pos >= slide.dimensions[1]:
@@ -795,9 +794,8 @@ def get_simple_tile(filename, level, x, y):
         tile_width = int(slide.properties.get("openslide.level[0].tile-width", 240))
         tile_size = tile_width
 
-        factor = slide.level_downsamples[level]
-        x_pos = int(x * tile_size * factor)
-        y_pos = int(y * tile_size * factor)
+        x_pos = x * tile_size
+        y_pos = y * tile_size
 
         read_width = min(tile_size, width - x_pos)
         read_height = min(tile_size, height - y_pos)
