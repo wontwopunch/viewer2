@@ -769,33 +769,38 @@ def get_simple_tile(filename, level, x, y):
 
         tile_size = 2048
 
-        # 원본 좌표에서 픽셀 위치 계산
-        x_pos = int(x * tile_size * downsample)
-        y_pos = int(y * tile_size * downsample)
-
-        read_width = min(tile_size * downsample, width - x_pos)
-        read_height = min(tile_size * downsample, height - y_pos)
-
-        # 읽기 크기는 레벨 보정 필요
-        region_width = int(read_width / downsample)
-        region_height = int(read_height / downsample)
+        # 좌표 보정: level 0일 때는 downsample 없이, 그 외에는 보정
+        if level == 0:
+            x_pos = x * tile_size
+            y_pos = y * tile_size
+            region_width = min(tile_size, width - x_pos)
+            region_height = min(tile_size, height - y_pos)
+        else:
+            x_pos = int(x * tile_size * downsample)
+            y_pos = int(y * tile_size * downsample)
+            read_width = min(tile_size * downsample, width - x_pos)
+            read_height = min(tile_size * downsample, height - y_pos)
+            region_width = int(read_width / downsample)
+            region_height = int(read_height / downsample)
 
         tile = slide.read_region((x_pos, y_pos), level, (region_width, region_height)).convert('RGB')
 
+        # 사이즈가 맞지 않으면 리사이즈
         if region_width != tile_size or region_height != tile_size:
             print(f"📐 resize 발생: {region_width}x{region_height} → {tile_size}x{tile_size}")
             tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
 
+        # 내용 체크
         tile_array = np.array(tile)
         if np.all(tile_array[:, :, :3] == 255):
             print(f"⚠️ 타일이 흰색입니다 - level={level}, x={x}, y={y}, pos=({x_pos}, {y_pos})")
         else:
             print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
 
+        # 전송
         output = io.BytesIO()
         tile.save(output, format='JPEG')
         output.seek(0)
-
         return send_file(output, mimetype='image/jpeg')
 
     except Exception as e:
@@ -803,8 +808,6 @@ def get_simple_tile(filename, level, x, y):
         print(f"🧨 예외 발생: {str(e)}")
         print(traceback.format_exc())
         return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
-
-
 
 
 
