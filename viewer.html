@@ -368,7 +368,10 @@
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
     
-                        viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, contentSize.x, contentSize.y), true);
+                        const centerX = contentSize.x / 2;
+                        const centerY = contentSize.y * 0.8;  // 전체 높이의 80% 지점
+                        viewer.viewport.panTo(new OpenSeadragon.Point(centerX, centerY));
+                        viewer.viewport.zoomTo(0.3); // 초기 확대 수준 조절 가능
                         viewer.forceRedraw();
                     });
     
