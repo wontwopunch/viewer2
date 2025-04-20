@@ -318,15 +318,23 @@ def get_tile(filename, level, x, y):
             return send_file(create_debug_tile(f"index 초과: x={x}, y={y}"), mimetype='image/jpeg')
 
         # 좌표 계산 (레벨 기준)
-        x_pos = int(x * tile_size * downsample)
-        y_pos = int(y * tile_size * downsample)
+        x_pos = x * tile_size
+        y_pos = y * tile_size
 
-        read_width = min(tile_size, width - x_pos)
-        read_height = min(tile_size, height - y_pos)
+        read_width = tile_size
+        read_height = tile_size
 
         print(f"📏 읽는 위치: ({x_pos}, {y_pos}), 크기: {read_width}x{read_height}")
 
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
+
+        # 내용이 있는지 확인
+        tile_array = np.array(tile)
+        if np.all(tile_array[:, :, :3] == 255):
+            print(f"⚠️ 타일이 흰색입니다 - level={level}, x={x}, y={y}, pos=({x_pos}, {y_pos})")
+        else:
+            print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
+
 
         if read_width != tile_size or read_height != tile_size:
             tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
@@ -783,13 +791,11 @@ def get_simple_tile(filename, level, x, y):
         tile_width = int(slide.properties.get("openslide.level[0].tile-width", 240))
         tile_size = tile_width
 
-        # 좌표 계산
-        x_pos = int(x * tile_size * downsample)
-        y_pos = int(y * tile_size * downsample)
+        x_pos = x * tile_size
+        y_pos = y * tile_size
 
-        # 읽기 크기 (레벨 N 기준)
-        read_width = int(tile_size * downsample)
-        read_height = int(tile_size * downsample)
+        read_width = tile_size
+        read_height = tile_size
 
         if x_pos >= width or y_pos >= height:
             return create_debug_tile("타일 오류: 범위 초과", x, y, level)
@@ -798,6 +804,12 @@ def get_simple_tile(filename, level, x, y):
         read_height = min(read_height, height - y_pos)
 
         tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height)).convert('RGB')
+
+        tile_array = np.array(tile)
+        if np.all(tile_array[:, :, :3] == 255):
+            print(f"⚠️ 타일이 흰색입니다 - level={level}, x={x}, y={y}, pos=({x_pos}, {y_pos})")
+        else:
+            print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
 
         if read_width != tile_size or read_height != tile_size:
             tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
