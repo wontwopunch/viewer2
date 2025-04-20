@@ -368,12 +368,13 @@
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
 
-                        // 하단 중심으로 뷰포트 이동
-                        const centerX = contentSize.x / 2;
-                        const centerY = contentSize.y * 0.8;  // 하단 80% 지점
-                        viewer.viewport.panTo(new OpenSeadragon.Point(centerX, centerY));
-                        viewer.viewport.zoomTo(viewer.viewport.getHomeZoom() * 1.2);
+                        const center = info.center_hint || [contentSize.x / 2, contentSize.y / 2];
+                        const centerPoint = viewer.viewport.imageToViewportCoordinates(center[0], center[1]);
+
+                        viewer.viewport.panTo(centerPoint);
+                        viewer.viewport.zoomTo(viewer.viewport.getMinZoom() * 1.2); // 살짝 확대
                     });
+
 
     
                     viewer.addHandler('tile-loaded', function (event) {

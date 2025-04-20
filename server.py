@@ -519,6 +519,9 @@ def get_slide_info(filename):
             tiles_y = math.ceil(h / tile_height)
             tiles_per_level.append([tiles_x, tiles_y])
 
+        # ✅ 조직 중심 자동 탐지
+        center_hint = get_center_of_tissue(slide)
+
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
@@ -526,12 +529,34 @@ def get_slide_info(filename):
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
             'tile_size': [tile_width, tile_height],
             'tiles_per_level': tiles_per_level,
+            'center_hint': center_hint,  # ✅ 중심 좌표 포함
             'properties': dict(slide.properties)
         }
 
         return jsonify(info)
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def get_center_of_tissue(slide):
+    level = 2 if slide.level_count > 2 else slide.level_count - 1
+    downsample = slide.level_downsamples[level]
+    w, h = slide.level_dimensions[level]
+
+    thumb = slide.read_region((0, 0), level, (w, h)).convert("L")
+    arr = np.array(thumb)
+
+    # 조직이 있는 부분: 밝기 기준 필터링
+    mask = arr < 220
+    if not np.any(mask):
+        return [slide.dimensions[0] // 2, slide.dimensions[1] // 2]
+
+    y_coords, x_coords = np.where(mask)
+    cx = int(np.median(x_coords) * downsample)
+    cy = int(np.median(y_coords) * downsample)
+    return [cx, cy]
+
 
 
 @app.route('/slide/<filename>/data', methods=['GET'])
