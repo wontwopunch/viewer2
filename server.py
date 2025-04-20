@@ -344,7 +344,7 @@ def get_tile(filename, level, x, y):
             
             # 응답 생성
             output = io.BytesIO()
-            tile.save(output, format='JPEG', quality=90)
+            tile.save(output, format='PNG')
             output.seek(0)
             print(f"타일 생성 성공: level={level}, x={x}, y={y}")
             response = make_response(send_file(output, mimetype='image/jpeg'))
@@ -662,7 +662,7 @@ def get_public_tile(filename, level, x, y):
         cached_tile = tile_cache.get(cache_key)
         if cached_tile is not None:
             output = io.BytesIO()
-            cached_tile.save(output, format='JPEG', quality=90)
+            cached_tile.save(output, format='PNG')
             output.seek(0)
             response = make_response(send_file(
                 output,
@@ -681,7 +681,7 @@ def get_public_tile(filename, level, x, y):
         tile_cache[cache_key] = tile.copy()
         
         output = io.BytesIO()
-        tile.save(output, format='JPEG', quality=90)
+        tile.save(output, format='PNG')
         output.seek(0)
         
         response = make_response(send_file(
@@ -831,11 +831,11 @@ def get_simple_tile(filename, level, x, y):
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
 
             output = io.BytesIO()
-            tile.save(output, format='JPEG', quality=90)
+            tile.save(output, format='PNG')
             output.seek(0)
             print("✅ 타일 생성 및 반환 완료")
 
-            return send_file(output, mimetype='image/jpeg')
+            return send_file(output, mimetype='image/png')
         except Exception as e:
             import traceback
             print(f"🧨 타일 읽기 실패: {str(e)}")
