@@ -347,7 +347,10 @@ def get_tile(filename, level, x, y):
             tile.save(output, format='JPEG', quality=90)
             output.seek(0)
             print(f"타일 생성 성공: level={level}, x={x}, y={y}")
-            return send_file(output, mimetype='image/jpeg')
+            response = make_response(send_file(output, mimetype='image/jpeg'))
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
             
         except Exception as e:
             print(f"타일 읽기 오류: {str(e)}")
@@ -366,29 +369,28 @@ def get_tile(filename, level, x, y):
 
 # 디버그 타일 생성 함수 추가
 def create_debug_tile(message="Error"):
-    """디버그 정보가 포함된 타일 생성"""
-    tile_size = 1024  # 작은 사이즈로 조정
-    # 빨간색 배경의 타일 생성
+    """디버그 정보가 포함된 타일 생성 및 CORS 포함 응답"""
+    tile_size = 1024
     tile = PIL.Image.new('RGB', (tile_size, tile_size), (255, 200, 200))
     draw = PIL.ImageDraw.Draw(tile)
-    
-    # 폰트 설정 - 기본 폰트로 대체
+
     font = PIL.ImageFont.load_default()
-    
-    # 격자 패턴 그리기
+
     for i in range(0, tile_size, 100):
         draw.line([(0, i), (tile_size, i)], fill=(200, 200, 200), width=1)
         draw.line([(i, 0), (i, tile_size)], fill=(200, 200, 200), width=1)
-    
-    # 텍스트 추가
-    draw.text((100, 100), f"DEBUG TILE", fill=(0, 0, 0), font=font)
-    draw.text((100, 150), f"{message}", fill=(255, 0, 0), font=font)
-    
-    # 이미지 저장
+
+    draw.text((100, 100), "DEBUG TILE", fill=(0, 0, 0), font=font)
+    draw.text((100, 150), message, fill=(255, 0, 0), font=font)
+
     output = io.BytesIO()
     tile.save(output, format='JPEG', quality=85)
     output.seek(0)
-    return output
+
+    response = make_response(send_file(output, mimetype='image/jpeg'))
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
 
 def load_public_files():
     try:
@@ -768,25 +770,33 @@ def check_slide(filename):
 def get_simple_tile(filename, level, x, y):
     try:
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
+        print(f"📥 요청된 파일 경로: {slide_path}")
+        print(f"🔍 요청된 타일: level={level}, x={x}, y={y}")
+
         if not os.path.exists(slide_path):
+            print("❌ 파일이 존재하지 않음.")
             return send_file(create_debug_tile("파일 없음"), mimetype='image/jpeg')
-        
+
         slide = None
         try:
             if slide_path in slide_cache:
                 slide = slide_cache[slide_path]
+                print("✅ 슬라이드 캐시에서 불러옴")
             else:
+                print("📂 슬라이드를 새로 엶")
                 slide = openslide.OpenSlide(slide_path)
                 slide_cache[slide_path] = slide
         except Exception as e:
+            print(f"🧨 슬라이드 열기 실패: {str(e)}")
             return send_file(create_debug_tile(f"슬라이드 로드 오류: {str(e)}"), mimetype='image/jpeg')
-        
+
         tile_size = 2048
         max_level = slide.level_count - 1
-        
+
         if level > max_level:
+            print(f"⚠️ 요청 레벨 {level} > 최대 레벨 {max_level} → 조정됨")
             level = max_level
-        
+
         if level == 0:
             x_pos = x * tile_size
             y_pos = y * tile_size
@@ -794,45 +804,50 @@ def get_simple_tile(filename, level, x, y):
             factor = slide.level_downsamples[level]
             x_pos = int(x * tile_size * factor)
             y_pos = int(y * tile_size * factor)
-        
-        print(f"📍 요청된 타일: level={level}, x={x}, y={y}")
-        print(f"↪ 실제 위치: x_pos={x_pos}, y_pos={y_pos}, 읽기 크기: {tile_size}")
-        
+        print(f"📏 계산된 좌표: x_pos={x_pos}, y_pos={y_pos}")
+
         width, height = slide.dimensions
         if x_pos >= width or y_pos >= height:
+            print(f"🚫 범위를 벗어남: ({x_pos}, {y_pos})")
             return send_file(create_debug_tile(f"범위 초과 ({x_pos}, {y_pos})"), mimetype='image/jpeg')
-        
+
         read_width = min(tile_size, width - x_pos)
         read_height = min(tile_size, height - y_pos)
-        
+        print(f"📐 읽을 영역: {read_width}x{read_height}")
+
         try:
-            if level == 0:
-                tile = slide.read_region((x_pos, y_pos), 0, (read_width, read_height))
+            tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
+            tile = tile.convert('RGB')
+            print("🖼️ 타일 변환 완료")
+
+            tile_array = np.array(tile)
+            if np.all(tile_array[:, :, :3] == 255):
+                print(f"⚪ 타일 내용이 모두 흰색입니다: x={x}, y={y}")
             else:
-                tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
-                tile = tile.convert('RGB')
+                print(f"🟢 타일에 내용이 있음: x={x}, y={y}")
 
-                # 🧪 흰색 타일 여부 확인
-                tile_array = np.array(tile)
-                if np.all(tile_array[:, :, :3] == 255):
-                    print(f"⚪ 흰 타일: ({x}, {y}) → 모두 흰색 픽셀")
-                else:
-                    print(f"🟣 유효 타일: ({x}, {y}) → 데이터 존재")
-
-            
             if tile.size != (tile_size, tile_size):
+                print(f"🔧 크기 조정: {tile.size} → {(tile_size, tile_size)}")
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
-            
+
             output = io.BytesIO()
             tile.save(output, format='JPEG', quality=90)
             output.seek(0)
+            print("✅ 타일 생성 및 반환 완료")
+
             return send_file(output, mimetype='image/jpeg')
         except Exception as e:
             import traceback
+            print(f"🧨 타일 읽기 실패: {str(e)}")
             print(traceback.format_exc())
             return send_file(create_debug_tile(f"타일 읽기 오류: {str(e)}"), mimetype='image/jpeg')
+
     except Exception as e:
+        import traceback
+        print(f"🔥 전체 함수 예외 발생: {str(e)}")
+        print(traceback.format_exc())
         return send_file(create_debug_tile(f"전체 오류: {str(e)}"), mimetype='image/jpeg')
+
 
 # 디버그 엔드포인트 추가 - 서버 상태 확인용
 @app.route('/status')
