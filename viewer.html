@@ -368,10 +368,13 @@
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
 
-                        // 🔥 수정된 부분: 초기 줌/위치 정확히 맞추기
-                        viewer.viewport.goHome(true);  // 기본 홈 위치 사용
-                        viewer.viewport.zoomTo(viewer.viewport.getMinZoom(), null, true); // 최소 줌으로 설정
+                        // 하단 중심으로 뷰포트 이동
+                        const centerX = contentSize.x / 2;
+                        const centerY = contentSize.y * 0.8;  // 하단 80% 지점
+                        viewer.viewport.panTo(new OpenSeadragon.Point(centerX, centerY));
+                        viewer.viewport.zoomTo(viewer.viewport.getHomeZoom() * 1.2);
                     });
+
     
                     viewer.addHandler('tile-loaded', function (event) {
                         const { tile } = event;
