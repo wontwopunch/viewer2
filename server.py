@@ -259,7 +259,7 @@ def create_tile(slide, level, x, y, tile_size, filename):
             
             # 메모리 절약을 위한 JPEG 압축
             output = io.BytesIO()
-            tile.save(output, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+            tile.save(output, format='JPEG', quality=85)
             output.seek(0)
             
             # 캐시에 저장
