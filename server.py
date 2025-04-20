@@ -348,7 +348,8 @@ def get_tile(filename, level, x, y):
 
 
 # 디버그 타일 생성 함수 추가
-def create_debug_tile(message="Error"):
+# 디버그 타일 생성 함수 개선
+def create_debug_tile(message="Error", x=None, y=None, level=None):
     """디버그 정보가 포함된 타일 생성 및 CORS 포함 응답"""
     tile_size = 1024
     tile = PIL.Image.new('RGB', (tile_size, tile_size), (255, 200, 200))
@@ -363,6 +364,12 @@ def create_debug_tile(message="Error"):
     draw.text((100, 100), "DEBUG TILE", fill=(0, 0, 0), font=font)
     draw.text((100, 150), message, fill=(255, 0, 0), font=font)
 
+    # level, x, y 좌표 추가 정보 출력
+    if level is not None and x is not None and y is not None:
+        draw.text((100, 200), f"Level: {level}", fill=(0, 0, 255), font=font)
+        draw.text((100, 220), f"X: {x}", fill=(0, 0, 255), font=font)
+        draw.text((100, 240), f"Y: {y}", fill=(0, 0, 255), font=font)
+
     output = io.BytesIO()
     tile.save(output, format='JPEG')
     output.seek(0)
@@ -370,6 +377,7 @@ def create_debug_tile(message="Error"):
     response = send_file(output, mimetype='image/jpeg', as_attachment=False)
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
+
 
 
 def load_public_files():
@@ -784,7 +792,7 @@ def get_simple_tile(filename, level, x, y):
         read_height = int(tile_size * downsample)
 
         if x_pos >= width or y_pos >= height:
-            return create_debug_tile(f"타일 오류: 범위 초과")
+            return create_debug_tile("타일 오류: 범위 초과", x, y, level)
 
         read_width = min(read_width, width - x_pos)
         read_height = min(read_height, height - y_pos)
