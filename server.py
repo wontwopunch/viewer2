@@ -748,6 +748,7 @@ def check_slide(filename):
             'message': str(e)
         })
 
+
 @app.route('/slide/<filename>/simple_tile/<int:level>/<int:x>/<int:y>')
 def get_simple_tile(filename, level, x, y):
     try:
@@ -763,43 +764,32 @@ def get_simple_tile(filename, level, x, y):
             slide = openslide.OpenSlide(slide_path)
             slide_cache[slide_path] = slide
 
-        width, height = slide.dimensions
         level = min(level, slide.level_count - 1)
         downsample = slide.level_downsamples[level]
-
+        width, height = slide.level_dimensions[level]
         tile_size = 2048
 
-        # 좌표 보정: level 0일 때는 downsample 없이, 그 외에는 보정
-        if level == 0:
-            x_pos = x * tile_size
-            y_pos = y * tile_size
-            region_width = min(tile_size, width - x_pos)
-            region_height = min(tile_size, height - y_pos)
-        else:
-            x_pos = int(x * tile_size * downsample)
-            y_pos = int(y * tile_size * downsample)
-            read_width = min(tile_size * downsample, width - x_pos)
-            read_height = min(tile_size * downsample, height - y_pos)
-            region_width = int(read_width / downsample)
-            region_height = int(read_height / downsample)
+        # level 기준 좌표 → 레벨 0 기준 좌표로 변환
+        x_pos = int(x * tile_size * downsample)
+        y_pos = int(y * tile_size * downsample)
 
-        tile = slide.read_region((x_pos, y_pos), level, (region_width, region_height)).convert('RGB')
+        read_width = int(min(tile_size * downsample, slide.dimensions[0] - x_pos))
+        read_height = int(min(tile_size * downsample, slide.dimensions[1] - y_pos))
 
-        # 사이즈가 맞지 않으면 리사이즈
-        if region_width != tile_size or region_height != tile_size:
-            print(f"📐 resize 발생: {region_width}x{region_height} → {tile_size}x{tile_size}")
-            tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)
+        if x_pos >= slide.dimensions[0] or y_pos >= slide.dimensions[1]:
+            return create_debug_tile("타일 오류: 범위 초과", x, y, level)
 
-        # 내용 체크
-        tile_array = np.array(tile)
-        if np.all(tile_array[:, :, :3] == 255):
+        # read_region은 level 0 기준 좌표, level을 따로 지정
+        region = slide.read_region((x_pos, y_pos), level, (tile_size, tile_size)).convert('RGB')
+
+        region_array = np.array(region)
+        if np.all(region_array[:, :, :3] == 255):
             print(f"⚠️ 타일이 흰색입니다 - level={level}, x={x}, y={y}, pos=({x_pos}, {y_pos})")
         else:
             print(f"✅ 타일 내용 있음 - level={level}, x={x}, y={y}")
 
-        # 전송
         output = io.BytesIO()
-        tile.save(output, format='JPEG')
+        region.save(output, format='JPEG')
         output.seek(0)
         return send_file(output, mimetype='image/jpeg')
 
@@ -808,6 +798,7 @@ def get_simple_tile(filename, level, x, y):
         print(f"🧨 예외 발생: {str(e)}")
         print(traceback.format_exc())
         return send_file(create_debug_tile(f"타일 오류: {str(e)}"), mimetype='image/jpeg')
+
 
 
 
