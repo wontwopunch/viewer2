@@ -22,6 +22,7 @@ from datetime import datetime
 import numpy as np
 import logging
 from logging.handlers import RotatingFileHandler
+from PIL import ImageFont
 
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -374,7 +375,7 @@ def create_debug_tile(message="Error"):
     tile = PIL.Image.new('RGB', (tile_size, tile_size), (255, 200, 200))
     draw = PIL.ImageDraw.Draw(tile)
 
-    font = PIL.ImageFont.load_default()
+    font = ImageFont.load_default()
 
     for i in range(0, tile_size, 100):
         draw.line([(0, i), (tile_size, i)], fill=(200, 200, 200), width=1)
