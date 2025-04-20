@@ -347,10 +347,11 @@ def get_tile(filename, level, x, y):
             output = io.BytesIO()
             tile.save(output, format='PNG')
             output.seek(0)
-            print(f"타일 생성 성공: level={level}, x={x}, y={y}")
-            response = make_response(send_file(output, mimetype='image/jpeg'))
+
+            response = make_response(send_file(output, mimetype='image/png', as_attachment=False))
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
+
 
             
         except Exception as e:
@@ -385,10 +386,10 @@ def create_debug_tile(message="Error"):
     draw.text((100, 150), message, fill=(255, 0, 0), font=font)
 
     output = io.BytesIO()
-    tile.save(output, format='JPEG', quality=85)
+    tile.save(output, format='PNG')
     output.seek(0)
 
-    response = make_response(send_file(output, mimetype='image/jpeg'))
+    response = make_response(send_file(output, mimetype='image/png', as_attachment=False))
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
@@ -887,4 +888,4 @@ if __name__ == '__main__':
     print(f"Initial public files state: {public_files}")
     
     # 디버그 모드에서 실행 (개발 중에만)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
