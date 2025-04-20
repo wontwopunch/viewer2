@@ -577,8 +577,8 @@ def get_slide_info(filename):
         print("=" * 50)
         
         # SVS 파일 정보 반환
-        tile_width = int(slide.properties.get("openslide.level[0].tile-width", 2048))
-        tile_height = int(slide.properties.get("openslide.level[0].tile-height", 2048))
+        tile_width = 2048
+        tile_height = 2048
 
         info = {
             'dimensions': slide.dimensions,
