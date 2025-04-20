@@ -60,22 +60,13 @@ ALLOWED_PATHS = [
 
 @app.before_request
 def security_check():
-    # 허용된 경로가 아니면 차단
     path = request.path
     if not any(re.match(pattern, path) for pattern in ALLOWED_PATHS):
-        print(f"Blocked unauthorized access to: {path}")
         return abort(404)
-    
-    # 악의적인 문자열 체크
     if any(bad in path.lower() for bad in ['.env', 'admin', 'login', 'console', 'api']):
-        print(f"Blocked suspicious request to: {path}")
         return abort(404)
-    
-    # 메소드 제한 수정
-    if request.method not in ['GET', 'POST', 'OPTIONS', 'DELETE']:  # OPTIONS와 DELETE 추가
+    if request.method not in ['GET', 'POST', 'OPTIONS', 'DELETE']:
         return abort(405)
-
-    # OPTIONS 요청 처리
     if request.method == 'OPTIONS':
         response = make_response()
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -506,46 +497,42 @@ def serve_public_file(filename):
         print(f"Error serving public file: {str(e)}")
         return str(e), 500
 
+
 @app.route('/slide/<filename>/info')
 def get_slide_info(filename):
     try:
         slide_path = os.path.join(UPLOAD_FOLDER, filename)
         if not os.path.exists(slide_path):
             return jsonify({'error': 'Slide not found'}), 404
-            
-        if slide_path not in slide_cache:
-            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
-        slide = slide_cache[slide_path]
-        
-        # 타일 크기를 정의
-        tile_size = 2048
-        
-        # 상세 로그 추가
-        print("=" * 50)
-        print(f"SVS 파일 정보 요청: {filename}")
-        print(f"원본 차원: {slide.dimensions}")
-        print(f"레벨 수: {slide.level_count}")
-        for i in range(slide.level_count):
-            print(f"  레벨 {i}: {slide.level_dimensions[i]}, 축소 계수: {slide.level_downsamples[i]}")
-        print("=" * 50)
-        
-        # SVS 파일 정보 반환
-        tile_width = 2048
-        tile_height = 2048
+
+        slide = slide_cache.get(slide_path)
+        if slide is None:
+            slide = openslide.OpenSlide(slide_path)
+            slide_cache[slide_path] = slide
+
+        tile_width = TILE_SIZE
+        tile_height = TILE_SIZE
+
+        tiles_per_level = []
+        for (w, h) in slide.level_dimensions:
+            tiles_x = math.ceil(w / tile_width)
+            tiles_y = math.ceil(h / tile_height)
+            tiles_per_level.append([tiles_x, tiles_y])
 
         info = {
             'dimensions': slide.dimensions,
             'level_count': slide.level_count,
             'level_dimensions': slide.level_dimensions,
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': [tile_width, tile_height],  # ← 수정된 부분
+            'tile_size': [tile_width, tile_height],
+            'tiles_per_level': tiles_per_level,
             'properties': dict(slide.properties)
         }
-        
+
         return jsonify(info)
     except Exception as e:
-        print(f"Error in get_slide_info: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/slide/<filename>/data', methods=['GET'])
 def get_slide_data(filename):
