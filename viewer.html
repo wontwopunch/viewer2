@@ -332,28 +332,6 @@
                             showNavigator: true,
                             navigatorPosition: "BOTTOM_RIGHT",
                             navigatorHeight: "15%",
-
-                            tileSources: {
-                                height: info.dimensions[1],
-                                width: info.dimensions[0],
-                                tileSize: info.tile_size,
-                                minLevel: 0,
-                                maxLevel: info.level_count - 1,
-
-                                getTileUrl: function(level, x, y) {
-                                    const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
-                                    console.log(`Requesting tile: ${url}`);
-                                    return url;
-                                },
-
-                                tileOverlap: 0
-                            },
-
-                            preserveViewport: false,
-                            homeFillsViewer: false,
-                            visibilityRatio: 1.0,
-                            constrainDuringPan: true,
-
                             animationTime: 0.5,
                             springStiffness: 5.0,
                             showNavigationControl: true,
@@ -363,8 +341,24 @@
                             debugMode: false,
                             opacity: 1.0,
                             placeholderFillStyle: "#F8F8F8",
-                            showReferenceStrip: false
+                            showReferenceStrip: false,
+
+                            tileSources: {
+                                height: info.dimensions[1],
+                                width: info.dimensions[0],
+                                tileSize: info.tile_size,
+                                tileOverlap: 0,
+                                minLevel: 0,
+                                maxLevel: info.level_count - 1,
+
+                                getTileUrl: function(level, x, y) {
+                                    const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
+                                    console.log(`Requesting tile: ${url}`);
+                                    return url;
+                                }
+                            }
                         });
+
 
                         // 👇 뷰어가 열렸을 때 전체 슬라이드 보여주기
                         viewer.addHandler('open', function() {
