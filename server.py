@@ -23,7 +23,7 @@ import numpy as np
 import logging
 from logging.handlers import RotatingFileHandler
 from PIL import ImageFont
-
+import math
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
@@ -761,7 +761,7 @@ def get_simple_tile(filename, level, x, y):
         print(f"🔍 요청된 타일: level={level}, x={x}, y={y}")
 
         if not os.path.exists(slide_path):
-            return send_file(create_debug_tile("파일 없음"), mimetype='image/jpeg')
+            return create_debug_tile(f"타일 오류: {str(e)}")
 
         slide = slide_cache.get(slide_path)
         if slide is None:
@@ -782,7 +782,7 @@ def get_simple_tile(filename, level, x, y):
         tiles_x = math.ceil(width / tile_size)
         tiles_y = math.ceil(height / tile_size)
         if x >= tiles_x or y >= tiles_y:
-            return send_file(create_debug_tile(f"범위 초과: x={x}, y={y}"), mimetype='image/jpeg')
+            return create_debug_tile(f"타일 오류: {str(e)}")
 
         # 좌표 계산
         x_pos = int(x * tile_size * downsample)
