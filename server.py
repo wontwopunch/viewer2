@@ -795,6 +795,9 @@ def get_simple_tile(filename, level, x, y):
             x_pos = int(x * tile_size * factor)
             y_pos = int(y * tile_size * factor)
         
+        print(f"📍 요청된 타일: level={level}, x={x}, y={y}")
+        print(f"↪ 실제 위치: x_pos={x_pos}, y_pos={y_pos}, 읽기 크기: {tile_size}")
+        
         width, height = slide.dimensions
         if x_pos >= width or y_pos >= height:
             return send_file(create_debug_tile(f"범위 초과 ({x_pos}, {y_pos})"), mimetype='image/jpeg')
@@ -807,15 +810,15 @@ def get_simple_tile(filename, level, x, y):
                 tile = slide.read_region((x_pos, y_pos), 0, (read_width, read_height))
             else:
                 tile = slide.read_region((x_pos, y_pos), level, (read_width, read_height))
-            
-            tile = tile.convert('RGB')
-            
-            # 디버깅: 타일이 흰색인지 확인
-            tile_array = np.array(tile)
-            if np.all(tile_array[:, :, :3] == 255):
-                print(f"경고: 타일 ({x}, {y}) 내용이 모두 흰색입니다")
-            else:
-                print(f"타일 ({x}, {y})에 내용이 있습니다")
+                tile = tile.convert('RGB')
+
+                # 🧪 흰색 타일 여부 확인
+                tile_array = np.array(tile)
+                if np.all(tile_array[:, :, :3] == 255):
+                    print(f"⚪ 흰 타일: ({x}, {y}) → 모두 흰색 픽셀")
+                else:
+                    print(f"🟣 유효 타일: ({x}, {y}) → 데이터 존재")
+
             
             if tile.size != (tile_size, tile_size):
                 tile = tile.resize((tile_size, tile_size), PIL.Image.LANCZOS)

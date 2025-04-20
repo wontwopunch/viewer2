@@ -395,7 +395,7 @@
                         });
                         
                         viewer.addHandler('tile-load-failed', function(event) {
-                            console.error('Tile load failed:', event);
+                            console.error('🧨 Tile load failed:', event.tile, event.message);
                         });
                         
                         viewer.addHandler('tile-loaded', function(event) {
