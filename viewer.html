@@ -300,6 +300,8 @@
             let info;
             let slideInfoFetched = false;
 
+            fetchSlideInfoOnce(filename);
+
             function fetchSlideInfoOnce(filename) {
                 if (slideInfoFetched) return;
                 slideInfoFetched = true;
