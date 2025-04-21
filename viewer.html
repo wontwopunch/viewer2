@@ -343,13 +343,13 @@
                 })
                 .catch(error => {
                     console.log("서버 연결 실패:", error);
-                    document.getElementById('viewer').innerHTML = 
+                    document.getElementById('viewer').innerHTML = `
                         <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
                             <h3>서버 연결 오류</h3>
                             <p>현재 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.</p>
                             <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
                         </div>
-                    ;
+                    `;
                     setTimeout(checkServerStatus, 5000);
                 });
         }
