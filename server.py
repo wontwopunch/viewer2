@@ -820,17 +820,20 @@ def serve_debug_image(filename):
     debug_dir = os.path.join(BASE_DIR, 'debug_images')
     path = os.path.join(debug_dir, filename)
 
-    # 🔒 .svs 파일명 추출 (예: S22-23832_4_.svs)
     original_filename = filename.replace('_debug_center.jpg', '')
 
-    # 🔒 비공개 상태일 경우 접근 차단
-    if original_filename not in public_files or not public_files[original_filename]:
-        return '접근이 허용되지 않은 이미지입니다.', 403
+    # ✅ 관리자 bypass 처리
+    is_admin = request.args.get("auth") == "admin"
+
+    if not is_admin:
+        if original_filename not in public_files or not public_files[original_filename]:
+            return '접근이 허용되지 않은 이미지입니다.', 403
 
     if os.path.exists(path):
         return send_file(path, mimetype='image/jpeg', as_attachment=False)
     else:
         return 'debug_center image not found', 404
+
 
 
 
