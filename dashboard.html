@@ -517,9 +517,8 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.filename) {
-                        // ✅ debug_center 이미지용 viewer로 이동
                         const imageUrl = `/debug_images/${data.filename}_debug_center.jpg`;
-                        window.location.href = `viewer.html?file=${data.filename}`;
+                        window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}`;
                     }
                 })
                 .catch(error => console.error('Upload error:', error));
