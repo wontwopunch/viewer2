@@ -22,7 +22,7 @@ from datetime import datetime
 import numpy as np
 import logging
 from logging.handlers import RotatingFileHandler
-from PIL import ImageFont
+from PIL import ImageFont, ImageDraw
 import math
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -547,18 +547,35 @@ def get_center_of_tissue(slide):
     downsample = slide.level_downsamples[level]
     w, h = slide.level_dimensions[level]
 
+    # 흑백 썸네일 이미지 추출
     thumb = slide.read_region((0, 0), level, (w, h)).convert("L")
     arr = np.array(thumb)
 
-    # 조직이 있는 부분: 밝기 기준 필터링
+    # 조직이 있는 픽셀만 마스킹 (밝기 기준)
     mask = arr < 220
     if not np.any(mask):
+        # 조직이 없을 경우 슬라이드 중심 반환
         return [slide.dimensions[0] // 2, slide.dimensions[1] // 2]
 
+    # 중심 좌표 계산 (마스크 내 중간값)
     y_coords, x_coords = np.where(mask)
-    cx = int(np.median(x_coords) * downsample)
-    cy = int(np.median(y_coords) * downsample)
-    return [cx, cy]
+    cx = int(np.median(x_coords))
+    cy = int(np.median(y_coords))
+
+    # 시각적 디버깅용 컬러 이미지로 변환
+    debug_img = slide.read_region((0, 0), level, (w, h)).convert("RGB")
+    draw = PIL.ImageDraw.Draw(debug_img)
+    draw.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=(255, 0, 0))  # 빨간 점
+
+    # 저장
+    debug_path = os.path.join(BASE_DIR, "debug_center.jpg")
+    debug_img.save(debug_path)
+    print(f"📸 중심 디버그 이미지 저장됨: {debug_path}")
+
+    # 원본 스케일로 환산
+    cx_orig = int(cx * downsample)
+    cy_orig = int(cy * downsample)
+    return [cx_orig, cy_orig]
 
 
 
@@ -816,3 +833,10 @@ def debug_tile():
     return send_file('debug_tile.jpg', mimetype='image/jpeg')
 
 
+@app.route('/debug_center.jpg')
+def debug_center_image():
+    path = os.path.join(BASE_DIR, 'debug_center.jpg')
+    if os.path.exists(path):
+        return send_file(path, mimetype='image/jpeg')
+    else:
+        return 'debug_center.jpg not found', 404
