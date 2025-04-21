@@ -1,4 +1,4 @@
-from flask import Flask, send_file, jsonify, request, send_from_directory, make_response, abort
+from flask import Flask, send_file, jsonify, request, send_from_directory, make_response, abort, redirect
 import openslide
 from flask_cors import CORS
 import os
@@ -24,6 +24,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from PIL import ImageFont, ImageDraw
 import math
+
 # 먼저 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
@@ -503,7 +504,9 @@ def serve_public_file(filename):
         if filename.endswith('.svs'):
             if filename not in public_files or not public_files[filename]:
                 return "File not found or not public", 404
-            return send_from_directory(STATIC_FOLDER, 'viewer.html')  # ✅ 수정됨
+            # ✅ viewer.html 로 리다이렉트하면서 image 파라미터 포함
+            image_path = f"/debug_images/{filename}_debug_center.jpg"
+            return redirect(f"/viewer.html?image={image_path}")
         return send_from_directory(STATIC_FOLDER, filename)
     except Exception as e:
         return str(e), 500
