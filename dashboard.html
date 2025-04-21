@@ -143,6 +143,48 @@
     .share-link a:hover {
       text-decoration: underline;
     }
+
+    /* 🔽 기존 CSS 안에 추가 */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-content {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 1.2em;
+  color: #333;
+}
+
+.loading-spinner {
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #3498db;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.file-list th:nth-child(4),
+.file-list td:nth-child(4) {
+  width: 200px;
+}
+
   </style>
 </head>
 <body>
@@ -151,6 +193,13 @@
       <h1>관리자 대시보드</h1>
       <button class="logout-btn" onclick="logout()">로그아웃</button>
     </div>
+
+    <div id="uploadLoadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <div>업로드 및 이미지 생성 중...</div>
+        </div>
+      </div>
 
     <div class="upload-section">
       <form id="uploadForm">
@@ -230,6 +279,12 @@
         });
     }
 
+    // 페이지 진입 시 자동 새로고침 여부 확인
+    if (localStorage.getItem("refreshNeeded") === "true") {
+        localStorage.removeItem("refreshNeeded");
+        displayFiles();
+    }
+
     function copyLink(filename) {
       const url = `${window.location.origin}/public/${filename}`;
       navigator.clipboard.writeText(url).then(() => alert("공유 링크 복사됨"));
@@ -262,24 +317,36 @@
       }).then(() => displayFiles());
     }
 
+    // 🔽 업로드 함수 수정
     document.getElementById('uploadForm').addEventListener('submit', e => {
-      e.preventDefault();
-      const fileInput = document.getElementById('fileInput');
-      if (fileInput.files.length === 0) return;
-      const file = fileInput.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
+    e.preventDefault();
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput.files.length === 0) return;
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
 
-      fetch(`${API_BASE_URL}/upload`, {
+    // ✅ 로딩 오버레이 표시
+    document.getElementById('uploadLoadingOverlay').style.display = 'flex';
+
+    fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData
-      })
+    })
         .then(res => res.json())
         .then(data => {
-          if (data.filename) {
+        if (data.filename) {
             const imagePath = `/debug_images/${data.filename}_debug_center.jpg`;
+            // ✅ 뷰어로 이동
             window.location.href = `viewer.html?image=${encodeURIComponent(imagePath)}`;
-          }
+        }
+        })
+        .catch(err => {
+        alert("업로드 중 오류가 발생했습니다.");
+        console.error(err);
+        })
+        .finally(() => {
+        document.getElementById('uploadLoadingOverlay').style.display = 'none';
         });
     });
 

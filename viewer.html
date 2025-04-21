@@ -238,7 +238,7 @@
 
     <div class="header">
         <h2 id="fileName">파일명</h2>
-        <button onclick="location.href='dashboard.html'">대시보드로 돌아가기</button>
+        <button onclick="goToDashboard()">대시보드로 돌아가기</button>
     </div>
 
     <div class="main-content">
@@ -328,6 +328,11 @@
     
             checkServerStatus();
         });
+
+        function goToDashboard() {
+            localStorage.setItem("refreshNeeded", "true");
+            window.location.href = "dashboard.html";
+        }
     
         function checkServerStatus() {
             fetch(`${API_BASE_URL}/status`)

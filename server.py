@@ -468,43 +468,46 @@ def rename_file(filename):
 
         old_path = os.path.join(UPLOAD_FOLDER, filename)
         new_path = os.path.join(UPLOAD_FOLDER, new_name)
-        
         if not os.path.exists(old_path):
             return jsonify({'error': '파일을 찾을 수 없습니다'}), 404
-        
         if os.path.exists(new_path):
             return jsonify({'error': '이미 존재하는 파일명입니다'}), 400
-        
+
         os.rename(old_path, new_path)
-        
+
+        # ✅ 메모/어노테이션 데이터도 이름 변경
         old_data_path = get_data_path(filename)
         new_data_path = get_data_path(new_name)
         if os.path.exists(old_data_path):
             os.rename(old_data_path, new_data_path)
-        
+
+        # ✅ debug_center 이미지도 변경
+        old_debug_path = os.path.join(BASE_DIR, 'debug_images', f"{filename}_debug_center.jpg")
+        new_debug_path = os.path.join(BASE_DIR, 'debug_images', f"{new_name}_debug_center.jpg")
+        if os.path.exists(old_debug_path):
+            os.rename(old_debug_path, new_debug_path)
+
+        # ✅ 공개 상태도 이동
+        if filename in public_files:
+            public_files[new_name] = public_files.pop(filename)
+            save_public_files()
+
         return jsonify({'message': '파일 이름이 변경되었습니다'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/public/<path:filename>')
 def serve_public_file(filename):
     try:
-        print(f"Accessing public file: {filename}")
-        
-        # SVS 파일 처리
         if filename.endswith('.svs'):
-            if filename not in public_files:
-                return "File not found", 404
-            if not public_files[filename]:
-                return "File is not public", 403
-            return send_file('viewer.html')
-        
-        # static 파일 처리
+            if filename not in public_files or not public_files[filename]:
+                return "File not found or not public", 404
+            return send_from_directory(STATIC_FOLDER, 'viewer.html')  # ✅ 수정됨
         return send_from_directory(STATIC_FOLDER, filename)
-        
     except Exception as e:
-        print(f"Error serving public file: {str(e)}")
         return str(e), 500
+
 
 
 @app.route('/slide/<filename>/info')
