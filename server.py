@@ -512,8 +512,8 @@ def get_slide_info(filename):
             tiles_y = math.ceil(h / tile_height)
             tiles_per_level.append([tiles_x, tiles_y])
 
-        # ✅ 조직 중심 자동 탐지
-        center_hint = get_center_of_tissue(slide)
+        # ✅ 조직 중심 자동 탐지 + 디버그 이미지 저장
+        center_hint = get_center_of_tissue(slide, filename)
 
         info = {
             'dimensions': slide.dimensions,
@@ -522,16 +522,16 @@ def get_slide_info(filename):
             'level_downsamples': [float(ds) for ds in slide.level_downsamples],
             'tile_size': [tile_width, tile_height],
             'tiles_per_level': tiles_per_level,
-            'center_hint': center_hint,  # ✅ 중심 좌표 포함
+            'center_hint': center_hint,
             'properties': dict(slide.properties)
         }
 
         print("🧭 중심 좌표 center_hint:", center_hint)
-
         return jsonify(info)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 
@@ -540,36 +540,33 @@ def get_center_of_tissue(slide, filename=None):
     downsample = slide.level_downsamples[level]
     w, h = slide.level_dimensions[level]
 
-    # 썸네일 이미지 흑백 변환
+    # 썸네일 생성
     thumb = slide.read_region((0, 0), level, (w, h)).convert("L")
     arr = np.array(thumb)
 
-    # 조직 마스킹
     mask = arr < 220
     if not np.any(mask):
         return [slide.dimensions[0] // 2, slide.dimensions[1] // 2]
 
-    # 중심 좌표 계산
     y_coords, x_coords = np.where(mask)
     cx = int(np.median(x_coords))
     cy = int(np.median(y_coords))
 
-    # 디버그 이미지 저장 (filename이 있을 경우)
+    debug_img = slide.read_region((0, 0), level, (w, h)).convert("RGB")
+    draw = PIL.ImageDraw.Draw(debug_img)
+    draw.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=(255, 0, 0))
+
+    # ⛳️ 저장 경로: debug_images/파일명_debug_center.jpg
     if filename:
         debug_dir = os.path.join(BASE_DIR, "debug_images")
         os.makedirs(debug_dir, exist_ok=True)
         debug_path = os.path.join(debug_dir, f"{filename}_debug_center.jpg")
-
-        debug_img = slide.read_region((0, 0), level, (w, h)).convert("RGB")
-        draw = PIL.ImageDraw.Draw(debug_img)
-        draw.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=(255, 0, 0))
         debug_img.save(debug_path)
-        print(f"📸 {debug_path} 저장됨")
+        print(f"✅ debug image 저장됨: {debug_path}")
+    
+    # 원본 해상도로 변환해서 반환
+    return [int(cx * downsample), int(cy * downsample)]
 
-    # 원본 해상도로 환산
-    cx_orig = int(cx * downsample)
-    cy_orig = int(cy * downsample)
-    return [cx_orig, cy_orig]
 
 
 
