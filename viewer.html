@@ -294,7 +294,6 @@
             }
     
             document.getElementById('fileName').textContent = filename;
-    
             fetchSlideInfoOnce(filename);
             checkServerStatus();
         });
@@ -333,6 +332,7 @@
                         showHomeControl: true,
                         showFullPageControl: false,
                         debugMode: false,
+                        opacity: 1.0,
                         placeholderFillStyle: "#F8F8F8",
                         showReferenceStrip: false,
     
@@ -345,7 +345,6 @@
                             maxLevel: info.level_count - 1,
                             getTileUrl: (level, x, y) => {
                                 const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
-                                console.log(`Requesting tile: ${url}`);
                                 return url;
                             }
                         }
@@ -355,20 +354,24 @@
                         const item = viewer.world.getItemAt(0);
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
-
-                        const centerX = info.center_hint?.[0] ?? contentSize.x / 2;
-                        const centerY = info.center_hint?.[1] ?? contentSize.y / 2;
-
-                        const center = new OpenSeadragon.Point(centerX, centerY);
-
-                        viewer.viewport.zoomTo(1.2, center, true); // 중심 확대 먼저
-                        viewer.viewport.panTo(center, true);       // 이후 중심 이동
+    
+                        const cx = info.center_hint?.[0] ?? contentSize.x / 2;
+                        const cy = info.center_hint?.[1] ?? contentSize.y / 2;
+    
+                        const normX = cx / contentSize.x;
+                        const normY = cy / contentSize.y;
+                        const normalized = new OpenSeadragon.Point(normX, normY);
+    
+                        const zoom = viewer.viewport.getMinZoom() * 1.3;
+    
+                        viewer.viewport.zoomTo(zoom, normalized, true);
+                        viewer.viewport.panTo(normalized, true);
                         viewer.forceRedraw();
-
-                        console.log("🌐 center_hint 좌표:", center);
-                        console.log("📦 getZoomBounds:", viewer.viewport.getBounds(true));
+    
+                        console.log("🌐 center_hint (px):", cx, cy);
+                        console.log("🔁 normalized center:", normalized);
+                        console.log("📦 getBounds:", viewer.viewport.getBounds(true));
                     });
-
     
                     viewer.addHandler('tile-loaded', event => {
                         const { tile } = event;
@@ -398,25 +401,6 @@
                 });
         }
     
-        function hideDebugInfo() {
-            const style = document.createElement('style');
-            style.innerHTML = `
-                .openseadragon-canvas .tile {
-                    border: none !important;
-                    outline: none !important;
-                }
-                .debugInfo, .tile-info {
-                    display: none !important;
-                }
-                .openseadragon-canvas:before, .openseadragon-canvas:after {
-                    display: none !important;
-                    content: none !important;
-                }
-            `;
-            document.head.appendChild(style);
-            document.querySelectorAll('.debugInfo, .tile-info, .openseadragon-debug').forEach(el => el.remove());
-        }
-    
         function checkServerStatus() {
             fetch(`${API_BASE_URL}/status`)
                 .then(response => {
@@ -441,7 +425,6 @@
                 });
         }
     </script>
-    
     
 </body>
 </html>
