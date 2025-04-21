@@ -532,12 +532,14 @@ def get_slide_info(filename):
             'center_hint': center_hint,  # ✅ 중심 좌표 포함
             'properties': dict(slide.properties)
         }
+
         print("🧭 중심 좌표 center_hint:", center_hint)
 
         return jsonify(info)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 def get_center_of_tissue(slide):
