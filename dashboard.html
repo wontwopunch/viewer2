@@ -166,7 +166,6 @@
           <th>파일명</th>
           <th>업로드 날짜</th>
           <th>크기</th>
-          <th>공개 상태</th>
           <th>작업</th>
         </tr>
       </thead>
@@ -209,29 +208,15 @@
                 <td>${file.name}</td>
                 <td>${formatDate(file.date)}</td>
                 <td>${formatFileSize(file.size)}</td>
-                <td class="${file.is_public ? 'status-public' : 'status-private'}">
-                    ${file.is_public ? `<div class="share-link">
-                    공유 링크: <a href="/public/${file.name}" target="_blank">${window.location.origin}/public/${file.name}</a>
-                    <button onclick="copyLink('${file.name}')">복사</button>
-                    </div>` : ''}
-                </td>
                 <td>
                     <button class="button view-btn" onclick="viewFile('${file.name}')">보기</button>
-                    <button class="button edit-btn" onclick="renameFile('${file.name}')">수정</button>
                     <button class="button delete-btn" onclick="deleteFile('${file.name}')">삭제</button>
-                    <button class="button ${file.is_public ? 'delete-btn' : 'view-btn'}" onclick="togglePublic('${file.name}')">
-                    ${file.is_public ? '비공개로 전환' : '공개로 전환'}
                     </button>
                 </td>
                 `;
             tbody.appendChild(row);
           });
         });
-    }
-
-    function copyLink(filename) {
-      const url = `${window.location.origin}/public/${filename}`;
-      navigator.clipboard.writeText(url).then(() => alert("공유 링크 복사됨"));
     }
 
     function viewFile(filename) {
@@ -243,11 +228,6 @@
       if (!confirm('정말 삭제하시겠습니까?')) return;
       fetch(`${API_BASE_URL}/files/${filename}`, { method: 'DELETE' })
         .then(res => res.json())
-        .then(() => displayFiles());
-    }
-
-    function togglePublic(filename) {
-        fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, { method: 'POST' })
         .then(() => displayFiles());
     }
 

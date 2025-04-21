@@ -365,29 +365,6 @@ def save_public_files(data=None):
         print(f"Current working directory: {os.getcwd()}")
         return False
 
-@app.route('/files/<filename>/toggle-public', methods=['POST'])
-def toggle_file_public(filename):
-    try:
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        if not os.path.exists(file_path):
-            return jsonify({'error': '파일을 찾을 수 없습니다'}), 404
-        
-        is_public = public_files.get(filename, False)
-        public_files[filename] = not is_public
-        
-        if save_public_files():
-            print(f"Successfully toggled public state for {filename}: {not is_public}")
-            print(f"Current public files: {public_files}")
-            return jsonify({
-                'message': '파일이 {}되었습니다'.format('공개' if not is_public else '비공개'),
-                'is_public': not is_public
-            })
-        else:
-            return jsonify({'error': '상태 저장에 실패했습니다'}), 500
-            
-    except Exception as e:
-        print(f"Error in toggle_public: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/files')
 def get_files():
@@ -401,8 +378,6 @@ def get_files():
                     'name': filename,
                     'date': stat.st_mtime,
                     'size': stat.st_size,
-                    'is_public': public_files.get(filename, False),
-                    'public_url': f'/public/{filename}' if public_files.get(filename, False) else None
                 })
         return jsonify(files)
     except Exception as e:
@@ -486,25 +461,6 @@ def rename_file(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/public/<path:filename>')
-def serve_public_file(filename):
-    try:
-        print(f"Accessing public file: {filename}")
-        
-        # SVS 파일 처리
-        if filename.endswith('.svs'):
-            if filename not in public_files:
-                return "File not found", 404
-            if not public_files[filename]:
-                return "File is not public", 403
-            return send_file('viewer.html')
-        
-        # static 파일 처리
-        return send_from_directory(STATIC_FOLDER, filename)
-        
-    except Exception as e:
-        print(f"Error serving public file: {str(e)}")
-        return str(e), 500
 
 
 @app.route('/slide/<filename>/info')
@@ -602,86 +558,6 @@ if not os.path.exists(PUBLIC_FILES_PATH):
 public_files = load_public_files()
 print(f"Initial public files state: {public_files}")
 
-@app.route('/public/<path:filename>/info')
-def get_public_slide_info(filename):
-    try:
-        if filename not in public_files or not public_files[filename]:
-            return jsonify({'error': 'File not accessible'}), 403
-            
-        slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        
-        if slide_path not in slide_cache:
-            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
-        slide = slide_cache[slide_path]
-        
-        tile_size = 2048
-        
-        tile_width = int(slide.properties.get("openslide.level[0].tile-width", 2048))
-        tile_height = int(slide.properties.get("openslide.level[0].tile-height", 2048))
-
-        info = {
-            'dimensions': slide.dimensions,
-            'level_count': slide.level_count,
-            'level_dimensions': slide.level_dimensions,
-            'level_downsamples': [float(ds) for ds in slide.level_downsamples],
-            'tile_size': [tile_width, tile_height],  # ← 수정된 부분
-            'properties': dict(slide.properties)
-        }
-        
-        return jsonify(info)
-    except Exception as e:
-        print(f"Error in get_public_slide_info: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/public/<path:filename>/tile/<int:level>/<int:x>/<int:y>')
-def get_public_tile(filename, level, x, y):
-    try:
-        if filename not in public_files or not public_files[filename]:
-            return jsonify({'error': 'File not accessible'}), 403
-            
-        slide_path = os.path.join(UPLOAD_FOLDER, filename)
-        tile_size = 2048
-        
-        cache_key = f"{slide_path}_{level}_{x}_{y}"
-        
-        # 캐시된 이미지가 있는지 확인
-        cached_tile = tile_cache.get(cache_key)
-        if cached_tile is not None:
-            output = io.BytesIO()
-            cached_tile.save(output, format='JPEG')
-            output.seek(0)
-            response = make_response(send_file(
-                output,
-                mimetype='image/jpeg',
-                as_attachment=False
-            ))
-            response.headers['Cache-Control'] = 'public, max-age=3600'
-            return response
-        
-        if slide_path not in slide_cache:
-            slide_cache[slide_path] = openslide.OpenSlide(slide_path)
-        slide = slide_cache[slide_path]
-        
-        tile = get_tile_image(slide_path, level, x, y, tile_size)
-        # 타일 이미지를 캐시에 저장
-        tile_cache[cache_key] = tile.copy()
-        
-        output = io.BytesIO()
-        tile.save(output, format='JPEG')
-        output.seek(0)
-        
-        response = make_response(send_file(
-            output,
-            mimetype='image/jpeg',
-            as_attachment=False
-        ))
-        
-        response.headers['Cache-Control'] = 'public, max-age=3600'
-        return response
-        
-    except Exception as e:
-        print(f"Error in get_public_tile: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/favicon.ico')
 def favicon():
