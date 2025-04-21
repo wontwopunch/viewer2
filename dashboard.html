@@ -518,7 +518,10 @@
                 .then(data => {
                     console.log('Upload response:', data);  // 응답 확인
                     if (data.filename) {
-                        window.location.href = `viewer.html?file=${data.filename}`;
+                        fetch(`${API_BASE_URL}/slide/${data.filename}/info`)
+                            .then(() => {
+                                window.location.href = `viewer.html?file=${data.filename}`;
+                            });
                     }
                 })
                 .catch(error => console.error('Upload error:', error));
