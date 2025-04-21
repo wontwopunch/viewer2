@@ -504,12 +504,12 @@ def serve_public_file(filename):
         if filename.endswith('.svs'):
             if filename not in public_files or not public_files[filename]:
                 return "File not found or not public", 404
-            # ✅ viewer.html 로 리다이렉트하면서 image 파라미터 포함
             image_path = f"/debug_images/{filename}_debug_center.jpg"
             return redirect(f"/viewer.html?image={image_path}")
         return send_from_directory(STATIC_FOLDER, filename)
     except Exception as e:
         return str(e), 500
+
 
 
 
