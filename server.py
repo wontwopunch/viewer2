@@ -532,7 +532,7 @@ def get_slide_info(filename):
             'center_hint': center_hint,  # ✅ 중심 좌표 포함
             'properties': dict(slide.properties)
         }
-        print(f"👉 center_hint: {info['center_hint']}")
+        print("🧭 중심 좌표 center_hint:", center_hint)
 
         return jsonify(info)
 
@@ -812,3 +812,5 @@ if __name__ == '__main__':
 @app.route('/debug_tile')
 def debug_tile():
     return send_file('debug_tile.jpg', mimetype='image/jpeg')
+
+

@@ -354,24 +354,24 @@
                     viewer.addHandler('open', function () {
                         console.log("Viewer opened");
                         hideDebugInfo();
-    
+
                         const item = viewer.world.getItemAt(0);
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
-    
+
                         const centerX = info.center_hint ? info.center_hint[0] : contentSize.x / 2;
                         const centerY = info.center_hint ? info.center_hint[1] : contentSize.y / 2;
-    
                         const center = new OpenSeadragon.Point(centerX, centerY);
-                        const zoom = viewer.viewport.getHomeZoom() * 1.2;
-    
-                        viewer.viewport.zoomTo(zoom, center, true);
+
+                        // ✅ 강제 줌 및 위치 이동
+                        viewer.viewport.zoomTo(1.0, center, true); // 줌 = 1.0 (확대율 조정해보자)
                         viewer.viewport.panTo(center, true);
-    
-                        // 디버그 로그
-                        console.log("🌐 이동 중심:", center);
-                        console.log("🔍 초기 줌:", zoom);
+
+                        // 추가 확인용 로그
+                        console.log("🌐 center_hint 좌표:", center);
+                        console.log("📦 getZoomBounds:", viewer.viewport.getBounds());
                     });
+
     
                     viewer.addHandler('tile-loaded', event => {
                         const { tile } = event;
