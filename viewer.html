@@ -295,9 +295,15 @@
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
 
+<<<<<<< HEAD
             // ✅ 관리자일 경우 auth=admin 포함하여 요청
             const fullImageUrl = `${API_BASE_URL}${decodedPath}${isAdmin ? '?auth=admin' : ''}`;
 
+=======
+            // ✅ 관리자면 auth=admin 붙이고, 캐시 방지 쿼리도 추가
+            const fullImageUrl = `${API_BASE_URL}${decodedPath}${isAdmin ? '?auth=admin' : ''}&nocache=${Date.now()}`;
+    
+>>>>>>> f1ca11e (update)
             const viewer = OpenSeadragon({
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
