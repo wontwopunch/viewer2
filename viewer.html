@@ -276,18 +276,19 @@
     
         document.addEventListener('DOMContentLoaded', function () {
             const params = new URLSearchParams(window.location.search);
-            const filename = params.get('file');
+            const imagePath = params.get('image');  // ← image 파라미터 받음
     
-            if (!filename) {
-                alert("파일명이 지정되지 않았습니다.");
+            if (!imagePath) {
+                alert("이미지 경로가 지정되지 않았습니다.");
                 window.location.href = '/dashboard.html';
                 return;
             }
     
+            const filename = decodeURIComponent(imagePath).split('/').pop().replace('_debug_center.jpg', '');
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
     
-            const debugImageUrl = `${API_BASE_URL}/debug_images/${filename}_debug_center.jpg`;
+            const debugImageUrl = `${API_BASE_URL}${imagePath}`;  // ← 정식 경로 사용
     
             const viewer = OpenSeadragon({
                 id: "viewer",
@@ -314,12 +315,11 @@
             });
     
             viewer.addHandler('canvas-click', event => {
-                console.log('Canvas clicked');
-                console.log('Zoom:', viewer.viewport.getZoom());
-                console.log('Bounds:', viewer.viewport.getBounds());
+                console.log('🖱️ Canvas clicked');
+                console.log('🔍 Zoom:', viewer.viewport.getZoom());
+                console.log('📦 Bounds:', viewer.viewport.getBounds());
             });
     
-            // 서버 상태 체크는 유지
             checkServerStatus();
         });
     
