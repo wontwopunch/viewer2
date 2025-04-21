@@ -353,6 +353,11 @@
                     setTimeout(checkServerStatus, 5000);
                 });
         }
+
+        function goToDashboard() {
+            localStorage.setItem("refreshNeeded", "true");
+            window.location.href = "dashboard.html";
+        }
     </script>
     
     
