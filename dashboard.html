@@ -206,25 +206,24 @@
           files.forEach(file => {
             const row = document.createElement('tr');
             row.innerHTML = `
-              <td>${file.name}</td>
-              <td>${formatDate(file.date)}</td>
-              <td>${formatFileSize(file.size)}</td>
-              <td class="${file.is_public ? 'status-public' : 'status-private'}">
-                ${file.is_public ? '공개' : '비공개'}
-                ${file.is_public ? <div class="share-link">
-                  공유 링크: <a href="/public/${file.name}" target="_blank">${window.location.origin}/public/${file.name}</a>
-                  <button onclick="copyLink('${file.name}')">복사</button>
-                </div> : ''}
-              </td>
-              <td>
-                <button class="button view-btn" onclick="viewFile('${file.name}')">보기</button>
-                <button class="button edit-btn" onclick="renameFile('${file.name}')">수정</button>
-                <button class="button delete-btn" onclick="deleteFile('${file.name}')">삭제</button>
-                <button class="button ${file.is_public ? 'delete-btn' : 'view-btn'}" onclick="togglePublic('${file.name}')">
-                  ${file.is_public ? '비공개로 전환' : '공개로 전환'}
-                </button>
-              </td>
-            `;
+                <td>${file.name}</td>
+                <td>${formatDate(file.date)}</td>
+                <td>${formatFileSize(file.size)}</td>
+                <td class="${file.is_public ? 'status-public' : 'status-private'}">
+                    ${file.is_public ? `<div class="share-link">
+                    공유 링크: <a href="/public/${file.name}" target="_blank">${window.location.origin}/public/${file.name}</a>
+                    <button onclick="copyLink('${file.name}')">복사</button>
+                    </div>` : ''}
+                </td>
+                <td>
+                    <button class="button view-btn" onclick="viewFile('${file.name}')">보기</button>
+                    <button class="button edit-btn" onclick="renameFile('${file.name}')">수정</button>
+                    <button class="button delete-btn" onclick="deleteFile('${file.name}')">삭제</button>
+                    <button class="button ${file.is_public ? 'delete-btn' : 'view-btn'}" onclick="togglePublic('${file.name}')">
+                    ${file.is_public ? '비공개로 전환' : '공개로 전환'}
+                    </button>
+                </td>
+                `;
             tbody.appendChild(row);
           });
         });
