@@ -276,8 +276,8 @@
     
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            let imagePath = params.get('image'); // 예: /debug_images/파일.jpg
-            const isAdmin = params.get('auth') === 'admin';
+            let imagePath = params.get('image');
+            const isAdmin = params.get('auth') === 'admin'; // ✅ 여기만 선언
     
             if (!imagePath) {
                 const fallbackFilename = params.get('file');
@@ -295,7 +295,7 @@
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
     
-            // ✅ 이미지 URL 생성 (auth + 캐시 방지)
+            // ✅ 최종 이미지 URL 생성
             let fullImageUrl = `${API_BASE_URL}${imagePath}`;
             const queryParams = [];
     
@@ -370,6 +370,7 @@
                 });
         }
     </script>
+    
     
 
 </body>
