@@ -288,14 +288,16 @@
                 }
                 return;
             }
-    
+
             const decodedPath = decodeURIComponent(imagePath);
+            const isAdmin = params.get('auth') === 'admin';
             const filename = decodedPath.split('/').pop().replace('_debug_center.jpg', '');
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
-    
-            const fullImageUrl = `${API_BASE_URL}${decodedPath}`;
-    
+
+            // ✅ 관리자일 경우 auth=admin 포함하여 요청
+            const fullImageUrl = `${API_BASE_URL}${decodedPath}${isAdmin ? '?auth=admin' : ''}`;
+
             const viewer = OpenSeadragon({
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
@@ -314,20 +316,21 @@
                 debugMode: false,
                 placeholderFillStyle: "#F8F8F8"
             });
-    
+
             viewer.addHandler('open', () => {
                 console.log("✅ debug_center 이미지 열림:", fullImageUrl);
                 viewer.viewport.goHome(true);
             });
-    
+
             viewer.addHandler('canvas-click', event => {
                 console.log('🖱️ Canvas clicked');
                 console.log('🔍 Zoom:', viewer.viewport.getZoom());
                 console.log('📦 Bounds:', viewer.viewport.getBounds());
             });
-    
+
             checkServerStatus();
         });
+
 
         function goToDashboard() {
             localStorage.setItem("refreshNeeded", "true");
