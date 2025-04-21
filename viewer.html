@@ -276,7 +276,8 @@
     
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const imagePath = params.get('image');
+            let imagePath = params.get('image'); // 예: /debug_images/파일.jpg
+            const isAdmin = params.get('auth') === 'admin';
     
             if (!imagePath) {
                 const fallbackFilename = params.get('file');
@@ -289,20 +290,24 @@
                 return;
             }
     
-            const decodedPath = decodeURIComponent(imagePath);
-            const isAdmin = params.get('auth') === 'admin';
-            let fullImageUrl = `${API_BASE_URL}${decodedPath}`;
+            imagePath = decodeURIComponent(imagePath);
+            const filename = imagePath.split('/').pop().replace('_debug_center.jpg', '');
+            document.getElementById('fileName').textContent = filename;
+            document.getElementById('loadingOverlay').style.display = 'none';
+    
+            // ✅ 이미지 URL 생성 (auth + 캐시 방지)
+            let fullImageUrl = `${API_BASE_URL}${imagePath}`;
             const queryParams = [];
-
+    
             if (isAdmin) queryParams.push('auth=admin');
             queryParams.push(`nocache=${Date.now()}`);
-
+    
             if (queryParams.length > 0) {
-            fullImageUrl += '?' + queryParams.join('&');
+                fullImageUrl += '?' + queryParams.join('&');
             }
-
+    
             console.log("🔗 최종 이미지 URL:", fullImageUrl);
-                
+    
             const viewer = OpenSeadragon({
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
@@ -365,6 +370,7 @@
                 });
         }
     </script>
+    
 
 </body>
 </html>
