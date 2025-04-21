@@ -46,16 +46,9 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # 보안 설정
 ALLOWED_PATHS = [
-    r'^/$',
-    r'^/static/.*',
-    r'^/slide/.*\.svs/.*$',
-    r'^/public/.*\.svs/.*$',
-    r'^/viewer\.html$',
-    r'^/dashboard\.html$',
-    r'^/files$',
-    r'^/files/.*$',
-    r'^/upload$',  # upload 경로 추가 확인
-    r'^/status$',
+    r'^/$', r'^/static/.*', r'^/slide/.*\.svs/.*$', r'^/public/.*\.svs/.*$',
+    r'^/viewer\.html$', r'^/dashboard\.html$', r'^/files$', r'^/files/.*$',
+    r'^/upload$', r'^/status$', r'^/debug_center\.jpg$',
 ]
 
 @app.before_request
