@@ -277,7 +277,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const imagePath = params.get('image');
-
+    
             if (!imagePath) {
                 const fallbackFilename = params.get('file');
                 if (fallbackFilename) {
@@ -288,22 +288,21 @@
                 }
                 return;
             }
-
+    
             const decodedPath = decodeURIComponent(imagePath);
             const isAdmin = params.get('auth') === 'admin';
             const filename = decodedPath.split('/').pop().replace('_debug_center.jpg', '');
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
-
-<<<<<<< HEAD
-            // ✅ 관리자일 경우 auth=admin 포함하여 요청
-            const fullImageUrl = `${API_BASE_URL}${decodedPath}${isAdmin ? '?auth=admin' : ''}`;
-
-=======
-            // ✅ 관리자면 auth=admin 붙이고, 캐시 방지 쿼리도 추가
-            const fullImageUrl = `${API_BASE_URL}${decodedPath}${isAdmin ? '?auth=admin' : ''}&nocache=${Date.now()}`;
     
->>>>>>> f1ca11e (update)
+            // ✅ fullImageUrl 생성 시 auth와 nocache 파라미터 함께 붙이기
+            let fullImageUrl = `${API_BASE_URL}${decodedPath}`;
+            if (isAdmin) {
+                fullImageUrl += `?auth=admin&nocache=${Date.now()}`;
+            } else {
+                fullImageUrl += `?nocache=${Date.now()}`;
+            }
+    
             const viewer = OpenSeadragon({
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
@@ -322,22 +321,21 @@
                 debugMode: false,
                 placeholderFillStyle: "#F8F8F8"
             });
-
+    
             viewer.addHandler('open', () => {
                 console.log("✅ debug_center 이미지 열림:", fullImageUrl);
                 viewer.viewport.goHome(true);
             });
-
+    
             viewer.addHandler('canvas-click', event => {
                 console.log('🖱️ Canvas clicked');
                 console.log('🔍 Zoom:', viewer.viewport.getZoom());
                 console.log('📦 Bounds:', viewer.viewport.getBounds());
             });
-
+    
             checkServerStatus();
         });
-
-
+    
         function goToDashboard() {
             localStorage.setItem("refreshNeeded", "true");
             window.location.href = "dashboard.html";
@@ -367,8 +365,6 @@
                 });
         }
     </script>
-    
-    
-    
+
 </body>
 </html>
