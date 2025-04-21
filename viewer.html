@@ -291,20 +291,18 @@
     
             const decodedPath = decodeURIComponent(imagePath);
             const isAdmin = params.get('auth') === 'admin';
-            const filename = decodedPath.split('/').pop().replace('_debug_center.jpg', '');
-            document.getElementById('fileName').textContent = filename;
-            document.getElementById('loadingOverlay').style.display = 'none';
-    
             let fullImageUrl = `${API_BASE_URL}${decodedPath}`;
             const queryParams = [];
 
             if (isAdmin) queryParams.push('auth=admin');
-                queryParams.push(`nocache=${Date.now()}`);
+            queryParams.push(`nocache=${Date.now()}`);
 
             if (queryParams.length > 0) {
-                fullImageUrl += '?' + queryParams.join('&');
+            fullImageUrl += '?' + queryParams.join('&');
             }
-    
+
+            console.log("🔗 최종 이미지 URL:", fullImageUrl);
+                
             const viewer = OpenSeadragon({
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",

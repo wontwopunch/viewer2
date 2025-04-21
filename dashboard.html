@@ -317,11 +317,11 @@
 
     function viewFile(filename) {
         const imageUrl = `/debug_images/${filename}_debug_center.jpg`;
-        // ✅ 로그인한 경우에 auth=admin 추가
         const isAdmin = localStorage.getItem('isLoggedIn');
         const param = isAdmin ? '&auth=admin' : '';
         window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}${param}`;
-    }
+        }
+
 
     function deleteFile(filename) {
       if (!confirm('정말 삭제하시겠습니까?')) return;
