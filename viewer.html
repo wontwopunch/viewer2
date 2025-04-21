@@ -276,11 +276,16 @@
     
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const imagePath = params.get('image');  // e.g. /debug_images/S22-23832_4_.svs_debug_center.jpg
-    
+            const imagePath = params.get('image');
+
             if (!imagePath) {
-                alert("이미지 경로가 지정되지 않았습니다.");
-                window.location.href = '/dashboard.html';
+                const fallbackFilename = params.get('file');
+                if (fallbackFilename) {
+                    window.location.href = `/viewer.html?image=/debug_images/${fallbackFilename}_debug_center.jpg`;
+                } else {
+                    alert("이미지 경로가 지정되지 않았습니다.");
+                    window.location.href = '/dashboard.html';
+                }
                 return;
             }
     

@@ -48,7 +48,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 ALLOWED_PATHS = [
     r'^/$', r'^/static/.*', r'^/slide/.*\.svs/.*$', r'^/public/.*\.svs/.*$',
     r'^/viewer\.html$', r'^/dashboard\.html$', r'^/files$', r'^/files/.*$',
-    r'^/upload$', r'^/status$', r'^/debug_center\.jpg$',
+    r'^/upload$', r'^/status$', r'^/debug_images/.*$',
 ]
 
 @app.before_request
@@ -130,12 +130,16 @@ def upload_file():
             filename = file.filename
             save_path = os.path.join(UPLOAD_FOLDER, filename)
             file.save(save_path)
+
+            # ✅ 디버그 이미지 생성 호출
             slide = openslide.OpenSlide(save_path)
             get_center_of_tissue(slide, filename)
+
             return jsonify({'message': '업로드 성공', 'filename': filename})
         return jsonify({'error': 'SVS 파일만 지원됩니다'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 # 전역 상수 수정
