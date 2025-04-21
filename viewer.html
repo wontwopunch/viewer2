@@ -274,9 +274,9 @@
     <script>
         const API_BASE_URL = 'http://188.166.255.196:5000';
     
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const imagePath = params.get('image');  // ← image 파라미터 받음
+            const imagePath = params.get('image');  // e.g. /debug_images/S22-23832_4_.svs_debug_center.jpg
     
             if (!imagePath) {
                 alert("이미지 경로가 지정되지 않았습니다.");
@@ -284,18 +284,19 @@
                 return;
             }
     
-            const filename = decodeURIComponent(imagePath).split('/').pop().replace('_debug_center.jpg', '');
+            const decodedPath = decodeURIComponent(imagePath);
+            const filename = decodedPath.split('/').pop().replace('_debug_center.jpg', '');
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
     
-            const debugImageUrl = `${API_BASE_URL}${imagePath}`;  // ← 정식 경로 사용
+            const fullImageUrl = `${API_BASE_URL}${decodedPath}`;
     
             const viewer = OpenSeadragon({
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 tileSources: {
                     type: 'image',
-                    url: debugImageUrl
+                    url: fullImageUrl
                 },
                 showNavigator: true,
                 navigatorPosition: "BOTTOM_RIGHT",
@@ -309,8 +310,8 @@
                 placeholderFillStyle: "#F8F8F8"
             });
     
-            viewer.addHandler('open', function () {
-                console.log("✅ debug_center 이미지 열림:", debugImageUrl);
+            viewer.addHandler('open', () => {
+                console.log("✅ debug_center 이미지 열림:", fullImageUrl);
                 viewer.viewport.goHome(true);
             });
     
@@ -347,6 +348,7 @@
                 });
         }
     </script>
+    
     
     
 </body>
