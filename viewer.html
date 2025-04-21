@@ -368,11 +368,16 @@
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
 
-                        const center = info.center_hint || [contentSize.x / 2, contentSize.y / 2];
-                        const centerPoint = viewer.viewport.imageToViewportCoordinates(center[0], center[1]);
+                        const centerX = info.center_hint[0];
+                        const centerY = info.center_hint[1];
 
-                        viewer.viewport.panTo(centerPoint);
-                        viewer.viewport.zoomTo(viewer.viewport.getMinZoom() * 1.2); // 살짝 확대
+                        const center = new OpenSeadragon.Point(centerX, centerY);
+                        viewer.viewport.panTo(center, true); // 중심으로 이동
+
+                        const zoom = viewer.viewport.getHomeZoom() * 1.2; // 살짝만 확대
+                        viewer.viewport.zoomTo(zoom, center, true); // 중심 기준으로 줌
+
+                        viewer.forceRedraw();
                     });
 
 
