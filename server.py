@@ -535,40 +535,42 @@ def get_slide_info(filename):
 
 
 
-def get_center_of_tissue(slide):
+def get_center_of_tissue(slide, filename=None):
     level = 2 if slide.level_count > 2 else slide.level_count - 1
     downsample = slide.level_downsamples[level]
     w, h = slide.level_dimensions[level]
 
-    # 흑백 썸네일 이미지 추출
+    # 썸네일 이미지 흑백 변환
     thumb = slide.read_region((0, 0), level, (w, h)).convert("L")
     arr = np.array(thumb)
 
-    # 조직이 있는 픽셀만 마스킹 (밝기 기준)
+    # 조직 마스킹
     mask = arr < 220
     if not np.any(mask):
-        # 조직이 없을 경우 슬라이드 중심 반환
         return [slide.dimensions[0] // 2, slide.dimensions[1] // 2]
 
-    # 중심 좌표 계산 (마스크 내 중간값)
+    # 중심 좌표 계산
     y_coords, x_coords = np.where(mask)
     cx = int(np.median(x_coords))
     cy = int(np.median(y_coords))
 
-    # 시각적 디버깅용 컬러 이미지로 변환
-    debug_img = slide.read_region((0, 0), level, (w, h)).convert("RGB")
-    draw = PIL.ImageDraw.Draw(debug_img)
-    draw.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=(255, 0, 0))  # 빨간 점
+    # 디버그 이미지 저장 (filename이 있을 경우)
+    if filename:
+        debug_dir = os.path.join(BASE_DIR, "debug_images")
+        os.makedirs(debug_dir, exist_ok=True)
+        debug_path = os.path.join(debug_dir, f"{filename}_debug_center.jpg")
 
-    # 저장
-    debug_path = os.path.join(BASE_DIR, "debug_center.jpg")
-    debug_img.save(debug_path)
-    print(f"📸 중심 디버그 이미지 저장됨: {debug_path}")
+        debug_img = slide.read_region((0, 0), level, (w, h)).convert("RGB")
+        draw = PIL.ImageDraw.Draw(debug_img)
+        draw.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=(255, 0, 0))
+        debug_img.save(debug_path)
+        print(f"📸 {debug_path} 저장됨")
 
-    # 원본 스케일로 환산
+    # 원본 해상도로 환산
     cx_orig = int(cx * downsample)
     cy_orig = int(cy * downsample)
     return [cx_orig, cy_orig]
+
 
 
 
@@ -826,10 +828,15 @@ def debug_tile():
     return send_file('debug_tile.jpg', mimetype='image/jpeg')
 
 
-@app.route('/debug_center.jpg')
-def debug_center_image():
-    path = os.path.join(BASE_DIR, 'debug_center.jpg')
-    if os.path.exists(path):
-        return send_file(path, mimetype='image/jpeg')
-    else:
-        return 'debug_center.jpg not found', 404
+# @app.route('/debug_center.jpg')
+# def debug_center_image():
+#     path = os.path.join(BASE_DIR, 'debug_center.jpg')
+#     if os.path.exists(path):
+#         return send_file(path, mimetype='image/jpeg')
+#     else:
+#         return 'debug_center.jpg not found', 404
+    
+@app.route('/debug_images/<path:filename>')
+def serve_debug_image(filename):
+    debug_dir = os.path.join(BASE_DIR, 'debug_images')
+    return send_from_directory(debug_dir, filename)

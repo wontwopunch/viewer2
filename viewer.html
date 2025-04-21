@@ -335,20 +335,13 @@
                         opacity: 1.0,
                         placeholderFillStyle: "#F8F8F8",
                         showReferenceStrip: false,
-    
+
                         tileSources: {
-                            height: info.dimensions[1],
-                            width: info.dimensions[0],
-                            tileSize: 2048,
-                            tileOverlap: 0,
-                            minLevel: 0,
-                            maxLevel: info.level_count - 1,
-                            getTileUrl: (level, x, y) => {
-                                const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
-                                return url;
-                            }
+                            type: 'image',
+                            url: `${API_BASE_URL}/debug_images/${filename}_debug_center.jpg`
                         }
                     });
+
     
                     viewer.addHandler('open', function () {
                         const item = viewer.world.getItemAt(0);
