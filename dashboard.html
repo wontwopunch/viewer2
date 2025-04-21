@@ -143,48 +143,6 @@
     .share-link a:hover {
       text-decoration: underline;
     }
-
-    /* 🔽 기존 CSS 안에 추가 */
-.loading-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.loading-content {
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
-  text-align: center;
-  font-size: 1.2em;
-  color: #333;
-}
-
-.loading-spinner {
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #3498db;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.file-list th:nth-child(4),
-.file-list td:nth-child(4) {
-  width: 200px;
-}
-
   </style>
 </head>
 <body>
@@ -193,13 +151,6 @@
       <h1>관리자 대시보드</h1>
       <button class="logout-btn" onclick="logout()">로그아웃</button>
     </div>
-
-    <div id="uploadLoadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="loading-content">
-          <div class="loading-spinner"></div>
-          <div>업로드 및 이미지 생성 중...</div>
-        </div>
-      </div>
 
     <div class="upload-section">
       <form id="uploadForm">
@@ -248,80 +199,46 @@
 
     function displayFiles() {
         fetch(`${API_BASE_URL}/files`)
-            .then(res => res.json())
-            .then(files => {
-            const tbody = document.getElementById('fileList');
-            tbody.innerHTML = '';
-            files.forEach(file => {
-                const row = document.createElement('tr');
-
-                // 파일명
-                const nameTd = document.createElement('td');
-                nameTd.textContent = file.name;
-                row.appendChild(nameTd);
-
-                // 업로드 날짜
-                const dateTd = document.createElement('td');
-                dateTd.textContent = formatDate(file.date);
-                row.appendChild(dateTd);
-
-                // 크기
-                const sizeTd = document.createElement('td');
-                sizeTd.textContent = formatFileSize(file.size);
-                row.appendChild(sizeTd);
-
-                // 공개 상태
-                const statusTd = document.createElement('td');
-                statusTd.className = file.is_public ? 'status-public' : 'status-private';
-                statusTd.innerHTML = file.is_public ? '공개' : '비공개';
-                if (file.is_public) {
-                const shareDiv = document.createElement('div');
-                shareDiv.className = 'share-link';
-                shareDiv.innerHTML = `
-                    공유 링크: <a href="/public/${encodeURIComponent(file.name)}" target="_blank">${window.location.origin}/public/${encodeURIComponent(file.name)}</a>
-                    <button onclick="copyLink('${file.name}')">복사</button>
-                `;
-                statusTd.appendChild(shareDiv);
-                }
-                row.appendChild(statusTd);
-
-                // 작업 버튼들
-                const actionTd = document.createElement('td');
-                actionTd.innerHTML = `
+        .then(res => res.json())
+        .then(files => {
+          const tbody = document.getElementById('fileList');
+          tbody.innerHTML = '';
+          files.forEach(file => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${file.name}</td>
+              <td>${formatDate(file.date)}</td>
+              <td>${formatFileSize(file.size)}</td>
+              <td class="${file.is_public ? 'status-public' : 'status-private'}">
+                ${file.is_public ? '공개' : '비공개'}
+                ${file.is_public ? <div class="share-link">
+                  공유 링크: <a href="/public/${file.name}" target="_blank">${window.location.origin}/public/${file.name}</a>
+                  <button onclick="copyLink('${file.name}')">복사</button>
+                </div> : ''}
+              </td>
+              <td>
                 <button class="button view-btn" onclick="viewFile('${file.name}')">보기</button>
                 <button class="button edit-btn" onclick="renameFile('${file.name}')">수정</button>
                 <button class="button delete-btn" onclick="deleteFile('${file.name}')">삭제</button>
                 <button class="button ${file.is_public ? 'delete-btn' : 'view-btn'}" onclick="togglePublic('${file.name}')">
-                    ${file.is_public ? '비공개로 전환' : '공개로 전환'}
+                  ${file.is_public ? '비공개로 전환' : '공개로 전환'}
                 </button>
-                `;
-                row.appendChild(actionTd);
-
-                tbody.appendChild(row);
-            });
-            });
-        }
-
-
-    // 페이지 진입 시 자동 새로고침 여부 확인
-    if (localStorage.getItem("refreshNeeded") === "true") {
-        localStorage.removeItem("refreshNeeded");
-        displayFiles();
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        });
     }
 
     function copyLink(filename) {
-        const encoded = encodeURIComponent(filename);
-        const url = `${window.location.origin}/public/${encoded}`;
-        navigator.clipboard.writeText(url).then(() => alert("공유 링크 복사됨"));
+      const url = `${window.location.origin}/public/${filename}`;
+      navigator.clipboard.writeText(url).then(() => alert("공유 링크 복사됨"));
     }
 
     function viewFile(filename) {
         const imageUrl = `/debug_images/${filename}_debug_center.jpg`;
-        const isAdmin = localStorage.getItem('isLoggedIn');
-        const param = isAdmin ? '&auth=admin' : '';
-        window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}${param}`;
-        }
-
+        window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}&auth=admin`;
+    }
 
     function deleteFile(filename) {
       if (!confirm('정말 삭제하시겠습니까?')) return;
@@ -331,50 +248,39 @@
     }
 
     function togglePublic(filename) {
-      fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, { method: 'POST' })
+        fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, { method: 'POST' })
         .then(() => displayFiles());
     }
 
     function renameFile(filename) {
-      const newName = prompt('새 파일명을 입력하세요:', filename);
-      if (!newName || newName === filename) return;
-      fetch(`${API_BASE_URL}/files/${filename}/rename`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newName })
-      }).then(() => displayFiles());
+        const newName = prompt('새 파일명을 입력하세요:', filename);
+        if (!newName || newName === filename) return;
+        fetch(`${API_BASE_URL}/files/${filename}/rename`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newName })
+        }).then(() => displayFiles());
     }
 
-    // 🔽 업로드 함수 수정
+
     document.getElementById('uploadForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput.files.length === 0) return;
-    const file = fileInput.files[0];
-    const formData = new FormData();
-    formData.append('file', file);
+      e.preventDefault();
+      const fileInput = document.getElementById('fileInput');
+      if (fileInput.files.length === 0) return;
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
 
-    // ✅ 로딩 오버레이 표시
-    document.getElementById('uploadLoadingOverlay').style.display = 'flex';
-
-    fetch(`${API_BASE_URL}/upload`, {
+      fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData
-    })
+      })
         .then(res => res.json())
         .then(data => {
-        if (data.filename) {
+          if (data.filename) {
             const imagePath = `/debug_images/${data.filename}_debug_center.jpg`;
-            // ✅ 뷰어로 이동
             window.location.href = `viewer.html?image=${encodeURIComponent(imagePath)}`;
-        }
-        })
-        .catch(err => {
-        alert("업로드 중 오류가 발생했습니다.");
-        console.error(err);
-        })
-        .finally(() => {
-        document.getElementById('uploadLoadingOverlay').style.display = 'none';
+          }
         });
     });
 

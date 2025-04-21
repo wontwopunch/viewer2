@@ -238,7 +238,7 @@
 
     <div class="header">
         <h2 id="fileName">파일명</h2>
-        <button onclick="goToDashboard()">대시보드로 돌아가기</button>
+        <button onclick="location.href='dashboard.html'">대시보드로 돌아가기</button>
     </div>
 
     <div class="main-content">
@@ -276,9 +276,8 @@
     
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            let imagePath = params.get('image');
-            const isAdmin = params.get('auth') === 'admin'; // ✅ 여기만 선언
-    
+            const imagePath = params.get('image');
+
             if (!imagePath) {
                 const fallbackFilename = params.get('file');
                 if (fallbackFilename) {
@@ -290,23 +289,13 @@
                 return;
             }
     
-            imagePath = decodeURIComponent(imagePath);
-            const filename = imagePath.split('/').pop().replace('_debug_center.jpg', '');
+            const decodedPath = decodeURIComponent(imagePath);
+            const filename = decodedPath.split('/').pop().replace('_debug_center.jpg', '');
             document.getElementById('fileName').textContent = filename;
             document.getElementById('loadingOverlay').style.display = 'none';
-    
-            // ✅ 최종 이미지 URL 생성
-            let fullImageUrl = `${API_BASE_URL}${imagePath}`;
-            const queryParams = [];
-    
-            if (isAdmin) queryParams.push('auth=admin');
-            queryParams.push(`nocache=${Date.now()}`);
-    
-            if (queryParams.length > 0) {
-                fullImageUrl += '?' + queryParams.join('&');
-            }
-    
-            console.log("🔗 최종 이미지 URL:", fullImageUrl);
+
+            const fullImageUrl = `${API_BASE_URL}${decodedPath}`;
+
     
             const viewer = OpenSeadragon({
                 id: "viewer",
@@ -341,11 +330,6 @@
             checkServerStatus();
         });
     
-        function goToDashboard() {
-            localStorage.setItem("refreshNeeded", "true");
-            window.location.href = "dashboard.html";
-        }
-    
         function checkServerStatus() {
             fetch(`${API_BASE_URL}/status`)
                 .then(response => {
@@ -359,19 +343,19 @@
                 })
                 .catch(error => {
                     console.log("서버 연결 실패:", error);
-                    document.getElementById('viewer').innerHTML = `
+                    document.getElementById('viewer').innerHTML = 
                         <div style="text-align:center; padding:20px; background-color:#f8d7da; color:#721c24; border-radius:5px; margin:20px;">
                             <h3>서버 연결 오류</h3>
                             <p>현재 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.</p>
                             <button onclick="location.reload()" style="padding:10px; background:#721c24; color:white; border:none; border-radius:3px; cursor:pointer;">새로고침</button>
                         </div>
-                    `;
+                    ;
                     setTimeout(checkServerStatus, 5000);
                 });
         }
     </script>
     
     
-
+    
 </body>
 </html>
