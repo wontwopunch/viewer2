@@ -532,6 +532,7 @@ def get_slide_info(filename):
             'center_hint': center_hint,  # ✅ 중심 좌표 포함
             'properties': dict(slide.properties)
         }
+        print(f"👉 center_hint: {info['center_hint']}")
 
         return jsonify(info)
 

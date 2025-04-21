@@ -295,10 +295,7 @@
     
             document.getElementById('fileName').textContent = filename;
     
-            // ✅ 슬라이드 정보 요청 및 뷰어 초기화
             fetchSlideInfoOnce(filename);
-    
-            // ✅ 서버 상태 체크
             checkServerStatus();
         });
     
@@ -313,9 +310,7 @@
     
             fetch(endpoint)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to load slide info');
-                    }
+                    if (!response.ok) throw new Error('Failed to load slide info');
                     return response.json();
                 })
                 .then(data => {
@@ -323,10 +318,7 @@
                     console.log('Slide info received:', info);
                     console.log("📏 OpenSeadragon에 전달할 사이즈:", info.dimensions[0], info.dimensions[1]);
     
-                    const loadingOverlay = document.getElementById('loadingOverlay');
-                    if (loadingOverlay) {
-                        loadingOverlay.style.display = 'none';
-                    }
+                    document.getElementById('loadingOverlay').style.display = 'none';
     
                     const viewer = OpenSeadragon({
                         id: "viewer",
@@ -341,7 +333,6 @@
                         showHomeControl: true,
                         showFullPageControl: false,
                         debugMode: false,
-                        opacity: 1.0,
                         placeholderFillStyle: "#F8F8F8",
                         showReferenceStrip: false,
     
@@ -352,7 +343,7 @@
                             tileOverlap: 0,
                             minLevel: 0,
                             maxLevel: info.level_count - 1,
-                            getTileUrl: function (level, x, y) {
+                            getTileUrl: (level, x, y) => {
                                 const url = `${API_BASE_URL}/slide/${filename}/simple_tile/${level}/${x}/${y}`;
                                 console.log(`Requesting tile: ${url}`);
                                 return url;
@@ -363,44 +354,42 @@
                     viewer.addHandler('open', function () {
                         console.log("Viewer opened");
                         hideDebugInfo();
-
+    
                         const item = viewer.world.getItemAt(0);
                         const contentSize = item.getContentSize();
                         console.log("🖼 콘텐츠 사이즈:", contentSize);
-
-                        const centerX = info.center_hint[0];
-                        const centerY = info.center_hint[1];
-
-                        const center = new OpenSeadragon.Point(centerX, centerY);
-                        viewer.viewport.panTo(center, true); // 중심으로 이동
-
-                        const zoom = viewer.viewport.getHomeZoom() * 1.2; // 살짝만 확대
-                        viewer.viewport.zoomTo(zoom, center, true); // 중심 기준으로 줌
-
-                        viewer.forceRedraw();
-                    });
-
-
     
-                    viewer.addHandler('tile-loaded', function (event) {
+                        const centerX = info.center_hint ? info.center_hint[0] : contentSize.x / 2;
+                        const centerY = info.center_hint ? info.center_hint[1] : contentSize.y / 2;
+    
+                        const center = new OpenSeadragon.Point(centerX, centerY);
+                        const zoom = viewer.viewport.getHomeZoom() * 1.2;
+    
+                        viewer.viewport.zoomTo(zoom, center, true);
+                        viewer.viewport.panTo(center, true);
+    
+                        // 디버그 로그
+                        console.log("🌐 이동 중심:", center);
+                        console.log("🔍 초기 줌:", zoom);
+                    });
+    
+                    viewer.addHandler('tile-loaded', event => {
                         const { tile } = event;
-                        const level = tile.level;
-                        const x = tile.x;
-                        const y = tile.y;
+                        const { level, x, y } = tile;
                         if (x % 5 === 0 && y % 5 === 0) {
                             console.log(`Tile loaded: level=${level}, x=${x}, y=${y}`);
                         }
                     });
     
-                    viewer.addHandler('tile-drawn', function (event) {
+                    viewer.addHandler('tile-drawn', event => {
                         console.log(`🧩 그려진 타일: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
                     });
     
-                    viewer.addHandler('tile-load-failed', function (event) {
+                    viewer.addHandler('tile-load-failed', event => {
                         console.error('🧨 Tile load failed:', event.tile, event.message);
                     });
     
-                    viewer.addHandler('canvas-click', function (event) {
+                    viewer.addHandler('canvas-click', event => {
                         console.log('Canvas clicked:', event);
                         console.log('Current zoom:', viewer.viewport.getZoom());
                         console.log('Current bounds:', viewer.viewport.getBounds());
@@ -428,9 +417,7 @@
                 }
             `;
             document.head.appendChild(style);
-    
-            const debugElements = document.querySelectorAll('.debugInfo, .tile-info, .openseadragon-debug');
-            debugElements.forEach(el => el.remove());
+            document.querySelectorAll('.debugInfo, .tile-info, .openseadragon-debug').forEach(el => el.remove());
         }
     
         function checkServerStatus() {
@@ -457,6 +444,7 @@
                 });
         }
     </script>
+    
     
 </body>
 </html>
