@@ -415,7 +415,8 @@
 
         // 파일 보기 함수 추가
         function viewFile(filename) {
-            window.location.href = `/viewer.html?file=${filename}`;
+            const imagePath = `/debug_images/${filename}_debug_center.jpg`;
+            window.location.href = `/viewer.html?image=${encodeURIComponent(imagePath)}`;
         }
 
         // 파일 이름 변경 함수 추가
