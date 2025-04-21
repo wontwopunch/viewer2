@@ -804,15 +804,15 @@ def server_status():
     })
 
 
-@app.route('/debug_tile')
-def debug_tile():
-    return send_file('debug_tile.jpg', mimetype='image/jpeg')
-
-
 @app.route('/debug_images/<path:filename>')
 def serve_debug_image(filename):
     debug_dir = os.path.join(BASE_DIR, 'debug_images')
-    return send_from_directory(debug_dir, filename)
+    path = os.path.join(debug_dir, filename)
+
+    if os.path.exists(path):
+        return send_file(path, mimetype='image/jpeg', as_attachment=False)
+    else:
+        return 'debug_center image not found', 404
 
 
 
