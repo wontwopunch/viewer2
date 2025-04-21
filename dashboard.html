@@ -1,648 +1,245 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관리자 대시보드</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SVS 대시보드</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
 
-        .dashboard-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
+    .dashboard-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-        }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+    }
 
-        .upload-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-        }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
 
-        .file-list {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .logout-btn {
+      background-color: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
 
-        .file-list th, .file-list td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
+    .upload-section {
+      background-color: #f9fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      border: 1px solid #ddd;
+    }
 
-        .file-list th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
+    .upload-btn {
+      margin-left: 10px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 14px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
 
-        .file-list tr:hover {
-            background-color: #f8f9fa;
-        }
+    table.file-list {
+      width: 100%;
+      border-collapse: collapse;
+    }
 
-        .file-name {
-            color: #007bff;
-            text-decoration: none;
-            cursor: pointer;
-        }
+    .file-list th, .file-list td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #e0e0e0;
+    }
 
-        .file-name:hover {
-            text-decoration: underline;
-        }
+    .file-list th {
+      background-color: #f5f7fa;
+      font-weight: 600;
+    }
 
-        .toggle-button {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    .file-list tr:hover {
+      background-color: #f9f9f9;
+    }
 
-        .public {
-            background-color: #28a745;
-            color: white;
-        }
+    .button {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
 
-        .private {
-            background-color: #dc3545;
-            color: white;
-        }
+    .view-btn { background-color: #17a2b8; color: #fff; }
+    .edit-btn { background-color: #ffc107; color: #000; }
+    .delete-btn { background-color: #dc3545; color: #fff; }
 
-        .share-link {
-            font-size: 0.9em;
-            color: #6c757d;
-        }
+    .share-link {
+      font-size: 0.85rem;
+      color: #666;
+    }
 
-        .logout-btn {
-            padding: 8px 16px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    .share-link a {
+      color: #007bff;
+      text-decoration: none;
+    }
 
-        .upload-btn {
-            padding: 8px 16px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    .share-link a:hover {
+      text-decoration: underline;
+    }
 
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .action-buttons button {
-            padding: 4px 8px;
-            margin: 0 4px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .edit-btn {
-            background-color: #ffc107;
-            color: black;
-        }
-
-        .delete-btn {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .share-url-box {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .share-url-box input {
-            flex-grow: 1;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-            margin-right: 10px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #2196F3;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px;
-            border-radius: 8px;
-            position: relative;
-        }
-
-        .modal h2 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .modal-buttons {
-            margin-top: 20px;
-            text-align: right;
-        }
-
-        .modal-buttons button {
-            margin-left: 10px;
-        }
-
-        .status-private {
-            color: #dc3545;
-            font-weight: bold;
-        }
-
-        .share-link {
-            display: block;
-            margin-top: 5px;
-            font-size: 0.8em;
-            color: #666;
-        }
-
-        .share-link a {
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .share-link a:hover {
-            text-decoration: underline;
-        }
-
-        .share-link button {
-            padding: 2px 6px;
-            margin-left: 5px;
-            font-size: 0.9em;
-            background-color: #6c757d;
-            color: white;
-        }
-    </style>
+    .status-public { color: #28a745; font-weight: 600; }
+    .status-private { color: #dc3545; font-weight: 600; }
+  </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <div class="header">
-            <h1>관리자 대시보드</h1>
-            <button class="logout-btn" onclick="logout()">로그아웃</button>
-        </div>
-
-        <div class="upload-section">
-            <h2>파일 업로드</h2>
-            <form id="uploadForm">
-                <input type="file" accept=".svs" id="fileInput">
-                <button type="submit" class="upload-btn">업로드</button>
-            </form>
-        </div>
-
-        <h2>파일 목록</h2>
-        <table class="file-list">
-            <thead>
-                <tr>
-                    <th>파일명</th>
-                    <th>업로드 날짜</th>
-                    <th>크기</th>
-                    <th>상태</th>
-                    <th>작업</th>
-                </tr>
-            </thead>
-            <tbody id="fileList">
-            </tbody>
-        </table>
+  <div class="dashboard-container">
+    <div class="header">
+      <h1>SVS 파일 관리자</h1>
+      <button class="logout-btn" onclick="logout()">로그아웃</button>
     </div>
 
-    <!-- 모달 HTML 추가 -->
-    <div id="editModal" class="modal">
-        <div class="modal-content">
-            <h2>파일 정보 수정</h2>
-            <div class="form-group">
-                <label for="editFileName">파일명:</label>
-                <input type="text" id="editFileName" class="form-control">
-            </div>
-            <div class="form-group">
-                <label class="switch">
-                    <input type="checkbox" id="editPublicStatus">
-                    <span class="slider round"></span>
-                </label>
-                <label for="editPublicStatus">공개 상태</label>
-            </div>
-            <div id="shareUrlContainer" style="display: none;">
-                <label>공유 링크:</label>
-                <div class="share-url-box">
-                    <input type="text" id="shareUrl" readonly class="form-control">
-                    <button onclick="copyShareUrl()" class="btn btn-secondary">복사</button>
-                </div>
-            </div>
-            <div class="modal-buttons">
-                <button onclick="saveFileChanges()" class="btn btn-primary">저장</button>
-                <button onclick="closeEditModal()" class="btn btn-secondary">취소</button>
-            </div>
-        </div>
+    <div class="upload-section">
+      <form id="uploadForm">
+        <input type="file" accept=".svs" id="fileInput" />
+        <button type="submit" class="upload-btn">업로드</button>
+      </form>
     </div>
 
-    <script>
-        // 로그인 체크
-        if (!localStorage.getItem('isLoggedIn')) {
-            window.location.href = 'index.html';
-        }
+    <h2>파일 목록</h2>
+    <table class="file-list">
+      <thead>
+        <tr>
+          <th>파일명</th>
+          <th>업로드 날짜</th>
+          <th>크기</th>
+          <th>상태</th>
+          <th>작업</th>
+        </tr>
+      </thead>
+      <tbody id="fileList"></tbody>
+    </table>
+  </div>
 
-        // 로그아웃 함수
-        function logout() {
-            localStorage.removeItem('isLoggedIn');
-            window.location.href = 'index.html';
-        }
+  <script>
+    const API_BASE_URL = 'http://188.166.255.196:5000';
 
-        let files = [];
-        
-        // localhost:5000을 실제 서버 IP로 변경
-        const API_BASE_URL = 'http://188.166.255.196:5000';
+    if (!localStorage.getItem('isLoggedIn')) {
+      window.location.href = 'index.html';
+    }
 
-        // 파일 목록 표시 함수
-        function displayFiles() {
-            const tbody = document.getElementById('fileList');
-            tbody.innerHTML = '';
+    function logout() {
+      localStorage.removeItem('isLoggedIn');
+      window.location.href = 'index.html';
+    }
 
-            fetch(`${API_BASE_URL}/files`)  // URL 수정
-                .then(response => response.json())
-                .then(files => {
-                    files.forEach(file => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${file.name}</td>
-                            <td>${formatDate(file.date)}</td>
-                            <td>${formatFileSize(file.size)}</td>
-                            <td class="${file.is_public ? 'status-public' : 'status-private'}">
-                                ${file.is_public ? '공개' : '비공개'}
-                                ${file.is_public ? 
-                                    `<br><small class="share-link">
-                                        공유 링크: <a href="/public/${file.name}" target="_blank">
-                                            ${window.location.origin}/public/${file.name}
-                                        </a>
-                                        <button class="button" onclick="copyShareLink('${file.name}')">복사</button>
-                                    </small>` 
-                                    : ''
-                                }
-                            </td>
-                            <td>
-                                <button class="button edit-btn" onclick="renameFile('${file.name}')">수정</button>
-                                <button class="button delete-btn" onclick="deleteFile('${file.name}')">삭제</button>
-                                <button class="button view-btn" onclick="viewFile('${file.name}')">보기</button>
-                                <button class="button ${file.is_public ? 'delete-btn' : 'view-btn'}" 
-                                    onclick="togglePublic('${file.name}')">
-                                    ${file.is_public ? '비공개로 전환' : '공개로 전환'}
-                                </button>
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-        }
+    function formatDate(timestamp) {
+      return new Date(timestamp * 1000).toLocaleString();
+    }
 
-        // 파일 크기를 읽기 쉬운 형식으로 변환하는 함수
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
+    function formatFileSize(bytes) {
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
 
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // 날짜 포맷팅 함수 추가
-        function formatDate(timestamp) {
-            if (!timestamp) return 'N/A';
-            return new Date(timestamp * 1000).toLocaleString();
-        }
-
-        // 파일 보기 함수 추가
-        function viewFile(filename) {
-            const imagePath = `/debug_images/${filename}_debug_center.jpg`;
-            window.location.href = `viewer.html?image=${encodeURIComponent(imagePath)}`;
-        }
-
-        // 파일 이름 변경 함수 추가
-        function renameFile(filename) {
-            const newName = prompt('새 파일명을 입력하세요:', filename);
-            if (newName && newName !== filename) {
-                fetch(`${API_BASE_URL}/files/${filename}/rename`, {  // URL 수정
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ newName: newName })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        displayFiles();
-                    }
-                });
-            }
-        }
-
-        // 공유 링크 복사 함수 수정
-        function copyShareLink(filename) {
-            const shareUrl = `${window.location.origin}/public/${filename}`;
-            
-            // 모던 브라우저용 클립보드 API와 폴백 방식 모두 구현
-            if (navigator.clipboard && window.isSecureContext) {
-                // 모던 브라우저
-                navigator.clipboard.writeText(shareUrl)
-                    .then(() => {
-                        alert('공유 링크가 클립보드에 복사되었습니다.');
-                    })
-                    .catch(err => {
-                        console.error('클립보드 복사 실패:', err);
-                        fallbackCopyTextToClipboard(shareUrl);
-                    });
-            } else {
-                // 폴백 방식
-                fallbackCopyTextToClipboard(shareUrl);
-            }
-        }
-
-        // 폴백 복사 함수 추가
-        function fallbackCopyTextToClipboard(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            
-            // 화면 밖으로 위치시킴
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                alert('공유 링크가 클립보드에 복사되었습니다.');
-            } catch (err) {
-                console.error('클립보드 복사 실패:', err);
-                alert('공유 링크 복사에 실패했습니다. 직접 선택하여 복사해주세요.');
-            }
-            
-            document.body.removeChild(textArea);
-        }
-
-        // 공개/비공개 토글 함수 수정
-        function togglePublic(filename) {
-            fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, {  // URL 수정
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    displayFiles();
-                }
-            });
-        }
-
-        // 파일 업로드 처리
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const formData = new FormData();
-                formData.append('file', file);
-
-                fetch(`${API_BASE_URL}/upload`, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.filename) {
-                        const imageUrl = `/debug_images/${data.filename}_debug_center.jpg`;
-                        window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}`;
-                    }
-                })
-                .catch(error => console.error('Upload error:', error));
-            }
+    function displayFiles() {
+      fetch(`${API_BASE_URL}/files`)
+        .then(res => res.json())
+        .then(files => {
+          const tbody = document.getElementById('fileList');
+          tbody.innerHTML = '';
+          files.forEach(file => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${file.name}</td>
+              <td>${formatDate(file.date)}</td>
+              <td>${formatFileSize(file.size)}</td>
+              <td class="${file.is_public ? 'status-public' : 'status-private'}">
+                ${file.is_public ? '공개' : '비공개'}
+              </td>
+              <td>
+                <button class="button view-btn" onclick="viewFile('${file.name}')">보기</button>
+                <button class="button delete-btn" onclick="deleteFile('${file.name}')">삭제</button>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
         });
+    }
 
+    function viewFile(filename) {
+      const imageUrl = `/debug_images/${filename}_debug_center.jpg`;
+      window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}`;
+    }
 
-        let currentEditingFile = null;
-
-        function showEditModal(file) {
-            currentEditingFile = file;
-            const modal = document.getElementById('editModal');
-            const fileNameInput = document.getElementById('editFileName');
-            const publicStatusInput = document.getElementById('editPublicStatus');
-            const shareUrlContainer = document.getElementById('shareUrlContainer');
-            const shareUrlInput = document.getElementById('shareUrl');
-
-            fileNameInput.value = file.name;
-            publicStatusInput.checked = file.isPublic;
-            
-            // 공개 상태에 따라 공유 링크 표시/숨김
-            if (file.isPublic) {
-                shareUrlContainer.style.display = 'block';
-                // 공유 링크 형식 수정
-                const shareUrl = `${window.location.origin}/public/${file.name}`;
-                shareUrlInput.value = shareUrl;
-            } else {
-                shareUrlContainer.style.display = 'none';
-            }
-
-            modal.style.display = 'block';
-        }
-
-        function closeEditModal() {
-            const modal = document.getElementById('editModal');
-            modal.style.display = 'none';
-            currentEditingFile = null;
-        }
-
-        function copyShareUrl() {
-            const shareUrlInput = document.getElementById('shareUrl');
-            shareUrlInput.select();
-            document.execCommand('copy');
-            alert('공유 링크가 복사되었습니다!');
-        }
-
-        // 공개 상태 변경 시 공유 링크 표시/숨김 처리
-        document.getElementById('editPublicStatus').addEventListener('change', function(e) {
-            const shareUrlContainer = document.getElementById('shareUrlContainer');
-            const shareUrlInput = document.getElementById('shareUrl');
-            
-            if (e.target.checked) {
-                shareUrlContainer.style.display = 'block';
-                const shareUrl = `${window.location.origin}/public/${currentEditingFile.name}`;
-                shareUrlInput.value = shareUrl;
-            } else {
-                shareUrlContainer.style.display = 'none';
-            }
+    function deleteFile(filename) {
+      if (confirm(`${filename}을(를) 삭제하시겠습니까?`)) {
+        fetch(`${API_BASE_URL}/files/${filename}`, {
+          method: 'DELETE'
+        })
+        .then(res => res.json())
+        .then(result => {
+          if (result.error) {
+            alert(result.error);
+          } else {
+            displayFiles(); // 새로고침 없이 갱신
+          }
         });
+      }
+    }
 
-        async function saveFileChanges() {
-            if (!currentEditingFile) return;
+    document.getElementById('uploadForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return;
 
-            const newFileName = document.getElementById('editFileName').value;
-            const newPublicStatus = document.getElementById('editPublicStatus').checked;
-            
-            try {
-                // 파일명 변경이 필요한 경우
-                if (newFileName !== currentEditingFile.name) {
-                    const renameResponse = await fetch(`${API_BASE_URL}/files/${currentEditingFile.name}/rename`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ newName: newFileName })
-                    });
-                    
-                    if (!renameResponse.ok) {
-                        throw new Error('파일명 변경 실패');
-                    }
-                }
+      const formData = new FormData();
+      formData.append('file', file);
 
-                // 공개 상태 변경이 필요한 경우
-                if (newPublicStatus !== currentEditingFile.isPublic) {
-                    const toggleResponse = await fetch(`${API_BASE_URL}/files/${newFileName}/toggle-public`, {
-                        method: 'POST'
-                    });
-                    
-                    if (!toggleResponse.ok) {
-                        throw new Error('공개 상태 변경 실패');
-                    }
-                }
-
-                // 성공적으로 변경됨
-                closeEditModal();
-                displayFiles();  // 파일 목록 새로고침
-                
-            } catch (error) {
-                console.error('Error:', error);
-                alert('변경사항 저장 중 오류가 발생했습니다.');
-            }
+      fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.filename) {
+          const imageUrl = `/debug_images/${data.filename}_debug_center.jpg`;
+          window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}`;
         }
+      });
+    });
 
-        // 파일 삭제 함수 추가
-        function deleteFile(filename) {
-            if (confirm(`${filename}을(를) 삭제하시겠습니까?`)) {
-                fetch(`${API_BASE_URL}/files/${filename}`, {  // URL 수정
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        displayFiles();
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            }
-        }
-
-        // 초기 파일 목록 로드
-        displayFiles();
-    </script>
+    displayFiles(); // 초기 로드
+  </script>
 </body>
-</html> 
+</html>
