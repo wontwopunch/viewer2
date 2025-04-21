@@ -510,23 +510,22 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
-                fetch(`${API_BASE_URL}/upload`, {  // URL 수정
+                fetch(`${API_BASE_URL}/upload`, {
                     method: 'POST',
                     body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Upload response:', data);  // 응답 확인
                     if (data.filename) {
-                        fetch(`${API_BASE_URL}/slide/${data.filename}/info`)
-                            .then(() => {
-                                window.location.href = `viewer.html?file=${data.filename}`;
-                            });
+                        // ✅ debug_center 이미지용 viewer로 이동
+                        const imageUrl = `/debug_images/${data.filename}_debug_center.jpg`;
+                        window.location.href = `viewer.html?image=${encodeURIComponent(imageUrl)}`;
                     }
                 })
                 .catch(error => console.error('Upload error:', error));
             }
         });
+
 
         let currentEditingFile = null;
 

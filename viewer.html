@@ -273,126 +273,55 @@
 
     <script>
         const API_BASE_URL = 'http://188.166.255.196:5000';
-        let info;
-        let slideInfoFetched = false;
     
         document.addEventListener('DOMContentLoaded', function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            let filename = urlParams.get('file');
+            const params = new URLSearchParams(window.location.search);
+            const filename = params.get('file');
     
             if (!filename) {
-                const pathParts = window.location.pathname.split('/');
-                if (pathParts.includes('public')) {
-                    filename = pathParts[pathParts.length - 1];
-                }
-            }
-    
-            if (!filename) {
-                alert('파일명이 지정되지 않았습니다.');
+                alert("파일명이 지정되지 않았습니다.");
                 window.location.href = '/dashboard.html';
-                throw new Error('No filename specified');
+                return;
             }
     
             document.getElementById('fileName').textContent = filename;
-            fetchSlideInfoOnce(filename);
+            document.getElementById('loadingOverlay').style.display = 'none';
+    
+            const debugImageUrl = `${API_BASE_URL}/debug_images/${filename}_debug_center.jpg`;
+    
+            const viewer = OpenSeadragon({
+                id: "viewer",
+                prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+                tileSources: {
+                    type: 'image',
+                    url: debugImageUrl
+                },
+                showNavigator: true,
+                navigatorPosition: "BOTTOM_RIGHT",
+                animationTime: 0.5,
+                springStiffness: 5.0,
+                showNavigationControl: true,
+                showSequenceControl: false,
+                showHomeControl: true,
+                showFullPageControl: false,
+                debugMode: false,
+                placeholderFillStyle: "#F8F8F8"
+            });
+    
+            viewer.addHandler('open', function () {
+                console.log("✅ debug_center 이미지 열림:", debugImageUrl);
+                viewer.viewport.goHome(true);
+            });
+    
+            viewer.addHandler('canvas-click', event => {
+                console.log('Canvas clicked');
+                console.log('Zoom:', viewer.viewport.getZoom());
+                console.log('Bounds:', viewer.viewport.getBounds());
+            });
+    
+            // 서버 상태 체크는 유지
             checkServerStatus();
         });
-    
-        function fetchSlideInfoOnce(filename) {
-            if (slideInfoFetched) return;
-            slideInfoFetched = true;
-    
-            const isPublic = window.location.pathname.startsWith('/public/');
-            const endpoint = isPublic ?
-                `${API_BASE_URL}/public/${filename}/info` :
-                `${API_BASE_URL}/slide/${filename}/info`;
-    
-            fetch(endpoint)
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to load slide info');
-                    return response.json();
-                })
-                .then(data => {
-                    info = data;
-                    console.log('Slide info received:', info);
-                    console.log("📏 OpenSeadragon에 전달할 사이즈:", info.dimensions[0], info.dimensions[1]);
-    
-                    document.getElementById('loadingOverlay').style.display = 'none';
-    
-                    const viewer = OpenSeadragon({
-                        id: "viewer",
-                        prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-                        showNavigator: true,
-                        navigatorPosition: "BOTTOM_RIGHT",
-                        navigatorHeight: "15%",
-                        animationTime: 0.5,
-                        springStiffness: 5.0,
-                        showNavigationControl: true,
-                        showSequenceControl: false,
-                        showHomeControl: true,
-                        showFullPageControl: false,
-                        debugMode: false,
-                        opacity: 1.0,
-                        placeholderFillStyle: "#F8F8F8",
-                        showReferenceStrip: false,
-
-                        tileSources: {
-                            type: 'image',
-                            url: `${API_BASE_URL}/debug_images/${filename}_debug_center.jpg`
-                        }
-                    });
-
-    
-                    viewer.addHandler('open', function () {
-                        const item = viewer.world.getItemAt(0);
-                        const contentSize = item.getContentSize();
-                        console.log("🖼 콘텐츠 사이즈:", contentSize);
-    
-                        const cx = info.center_hint?.[0] ?? contentSize.x / 2;
-                        const cy = info.center_hint?.[1] ?? contentSize.y / 2;
-    
-                        const normX = cx / contentSize.x;
-                        const normY = cy / contentSize.y;
-                        const normalized = new OpenSeadragon.Point(normX, normY);
-    
-                        const zoom = viewer.viewport.getMinZoom() * 1.3;
-    
-                        viewer.viewport.zoomTo(zoom, normalized, true);
-                        viewer.viewport.panTo(normalized, true);
-                        viewer.forceRedraw();
-    
-                        console.log("🌐 center_hint (px):", cx, cy);
-                        console.log("🔁 normalized center:", normalized);
-                        console.log("📦 getBounds:", viewer.viewport.getBounds(true));
-                    });
-    
-                    viewer.addHandler('tile-loaded', event => {
-                        const { tile } = event;
-                        const { level, x, y } = tile;
-                        if (x % 5 === 0 && y % 5 === 0) {
-                            console.log(`Tile loaded: level=${level}, x=${x}, y=${y}`);
-                        }
-                    });
-    
-                    viewer.addHandler('tile-drawn', event => {
-                        console.log(`🧩 그려진 타일: level=${event.tile.level}, x=${event.tile.x}, y=${event.tile.y}`);
-                    });
-    
-                    viewer.addHandler('tile-load-failed', event => {
-                        console.error('🧨 Tile load failed:', event.tile, event.message);
-                    });
-    
-                    viewer.addHandler('canvas-click', event => {
-                        console.log('Canvas clicked:', event);
-                        console.log('Current zoom:', viewer.viewport.getZoom());
-                        console.log('Current bounds:', viewer.viewport.getBounds());
-                    });
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('이미지 로딩에 실패했습니다.');
-                });
-        }
     
         function checkServerStatus() {
             fetch(`${API_BASE_URL}/status`)
@@ -418,6 +347,7 @@
                 });
         }
     </script>
+    
     
 </body>
 </html>

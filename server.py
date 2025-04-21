@@ -124,21 +124,19 @@ def upload_file():
     try:
         if 'file' not in request.files:
             return jsonify({'error': '파일이 없습니다'}), 400
-        
+
         file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': '선택된 파일이 없습니다'}), 400
-        
         if file and file.filename.endswith('.svs'):
-            filename = os.path.join(UPLOAD_FOLDER, file.filename)
-            file.save(filename)
-            print(f'File saved to: {filename}')  # 디버그 로그 추가
-            return jsonify({'message': '파일이 업로드되었습니다', 'filename': file.filename})
-        
-        return jsonify({'error': 'SVS 파일만 업로드 가능합니다'}), 400
+            filename = file.filename
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(save_path)
+            slide = openslide.OpenSlide(save_path)
+            get_center_of_tissue(slide, filename)
+            return jsonify({'message': '업로드 성공', 'filename': filename})
+        return jsonify({'error': 'SVS 파일만 지원됩니다'}), 400
     except Exception as e:
-        print(f'Upload error: {str(e)}')  # 디버그 로그 추가
         return jsonify({'error': str(e)}), 500
+
 
 # 전역 상수 수정
 TILE_SIZE = 2048  # 512에서 2048로 변경
@@ -535,39 +533,30 @@ def get_slide_info(filename):
 
 
 
-def get_center_of_tissue(slide, filename=None):
+def get_center_of_tissue(slide, filename):
     level = 2 if slide.level_count > 2 else slide.level_count - 1
     downsample = slide.level_downsamples[level]
     w, h = slide.level_dimensions[level]
 
-    # 썸네일 생성
-    thumb = slide.read_region((0, 0), level, (w, h)).convert("L")
-    arr = np.array(thumb)
-
+    arr = np.array(slide.read_region((0, 0), level, (w, h)).convert("L"))
     mask = arr < 220
+
     if not np.any(mask):
-        return [slide.dimensions[0] // 2, slide.dimensions[1] // 2]
+        cx = slide.dimensions[0] // 2
+        cy = slide.dimensions[1] // 2
+    else:
+        y_coords, x_coords = np.where(mask)
+        cx = int(np.median(x_coords) * downsample)
+        cy = int(np.median(y_coords) * downsample)
 
-    y_coords, x_coords = np.where(mask)
-    cx = int(np.median(x_coords))
-    cy = int(np.median(y_coords))
+    rgb = slide.read_region((0, 0), level, (w, h)).convert("RGB")
+    draw = ImageDraw.Draw(rgb)
+    draw.ellipse((int(cx/downsample)-5, int(cy/downsample)-5, int(cx/downsample)+5, int(cy/downsample)+5), fill=(255, 0, 0))
 
-    debug_img = slide.read_region((0, 0), level, (w, h)).convert("RGB")
-    draw = PIL.ImageDraw.Draw(debug_img)
-    draw.ellipse((cx - 5, cy - 5, cx + 5, cy + 5), fill=(255, 0, 0))
-
-    # ⛳️ 저장 경로: debug_images/파일명_debug_center.jpg
-    if filename:
-        debug_dir = os.path.join(BASE_DIR, "debug_images")
-        os.makedirs(debug_dir, exist_ok=True)
-        debug_path = os.path.join(debug_dir, f"{filename}_debug_center.jpg")
-        debug_img.save(debug_path)
-        print(f"✅ debug image 저장됨: {debug_path}")
-    
-    # 원본 해상도로 변환해서 반환
-    return [int(cx * downsample), int(cy * downsample)]
-
-
+    os.makedirs(os.path.join(BASE_DIR, 'debug_images'), exist_ok=True)
+    save_path = os.path.join(BASE_DIR, 'debug_images', f'{filename}_debug_center.jpg')
+    rgb.save(save_path)
+    print(f"✅ 조직 중심 이미지 저장됨: {save_path}")
 
 
 
@@ -825,14 +814,6 @@ def debug_tile():
     return send_file('debug_tile.jpg', mimetype='image/jpeg')
 
 
-# @app.route('/debug_center.jpg')
-# def debug_center_image():
-#     path = os.path.join(BASE_DIR, 'debug_center.jpg')
-#     if os.path.exists(path):
-#         return send_file(path, mimetype='image/jpeg')
-#     else:
-#         return 'debug_center.jpg not found', 404
-    
 @app.route('/debug_images/<path:filename>')
 def serve_debug_image(filename):
     debug_dir = os.path.join(BASE_DIR, 'debug_images')
