@@ -153,7 +153,7 @@ if not os.path.exists(TILE_CACHE_DIR):
     os.makedirs(TILE_CACHE_DIR)
 
 def get_tile_cache_path(filename, level, x, y):
-    basename = os.path.splitext(filename)[0]
+    basename = os.path.splitext(filename)[0]  # 확장자 제거
     cache_dir = os.path.join(TILE_CACHE_DIR, basename, str(level))
     os.makedirs(cache_dir, exist_ok=True)
     return os.path.join(cache_dir, f"{x}_{y}.jpg")
@@ -410,35 +410,49 @@ def delete_file(filename):
         file_path = os.path.join(UPLOAD_FOLDER, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
-            
+
             basename = os.path.splitext(filename)[0]
+
+            # 타일 캐시 삭제 (타일 방식 유지 시)
             cache_dir = os.path.join(TILE_CACHE_DIR, basename)
             if os.path.exists(cache_dir):
                 import shutil
                 shutil.rmtree(cache_dir)
-            
+
+            # slide 캐시 정리
             slide_path = os.path.join(UPLOAD_FOLDER, filename)
             if slide_path in slide_cache:
                 del slide_cache[slide_path]
-            
+
+            # 타일 캐시 키 제거
             prefix = f"{slide_path}_"
             keys_to_delete = [k for k in tile_cache.keys() if k.startswith(prefix)]
             for key in keys_to_delete:
                 del tile_cache[key]
-            
+
+            # 데이터 파일 삭제
             data_path = get_data_path(filename)
             if os.path.exists(data_path):
                 os.remove(data_path)
-            
+
+            # 공개 상태 제거
             if filename in public_files:
                 del public_files[filename]
                 save_public_files()
-                
+
+            # ✅ debug_center 이미지도 삭제
+            debug_img_path = os.path.join(BASE_DIR, 'debug_images', f"{basename}_debug_center.jpg")
+            if os.path.exists(debug_img_path):
+                os.remove(debug_img_path)
+                print(f"🗑 debug 이미지 삭제됨: {debug_img_path}")
+
             return jsonify({'message': '파일이 삭제되었습니다'})
+
         return jsonify({'error': '파일을 찾을 수 없습니다'}), 404
     except Exception as e:
         print(f"Error deleting file: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/files/<filename>/rename', methods=['POST'])
 def rename_file(filename):
@@ -789,6 +803,19 @@ def server_status():
         'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     })
 
+
+@app.route('/debug_tile')
+def debug_tile():
+    return send_file('debug_tile.jpg', mimetype='image/jpeg')
+
+
+@app.route('/debug_images/<path:filename>')
+def serve_debug_image(filename):
+    debug_dir = os.path.join(BASE_DIR, 'debug_images')
+    return send_from_directory(debug_dir, filename)
+
+
+
 # Flask 앱 초기화 후에 추가
 if __name__ != '__main__':
     # 로그 파일 설정
@@ -808,13 +835,3 @@ if __name__ == '__main__':
     # 디버그 모드에서 실행 (개발 중에만)
     app.run(host='0.0.0.0', port=5000, debug=False)
 
-
-@app.route('/debug_tile')
-def debug_tile():
-    return send_file('debug_tile.jpg', mimetype='image/jpeg')
-
-
-@app.route('/debug_images/<path:filename>')
-def serve_debug_image(filename):
-    debug_dir = os.path.join(BASE_DIR, 'debug_images')
-    return send_from_directory(debug_dir, filename)
