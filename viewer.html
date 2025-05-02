@@ -74,7 +74,10 @@
 
     // ✅ 여기!
     const sharedParam = shared ? '?shared=1' : '';
-    const fullImageUrl = `${API_BASE_URL}${decodedPath}${sharedParam}`;
+    const fullImageUrl = shared
+    ? `${API_BASE_URL}/debug_images/${filename}_debug_center.jpg?shared=1`
+    : `${API_BASE_URL}/debug_images/${filename}_debug_center.jpg`;
+
 
     initViewer(fullImageUrl);
     loadMemos();
@@ -86,7 +89,7 @@
       OpenSeadragon({
         id: "viewer",
         prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-        tileSources: { type: 'image', url },
+        tileSources: fullImageUrl,
         showNavigator: true,
         navigatorPosition: "BOTTOM_RIGHT"
       });
