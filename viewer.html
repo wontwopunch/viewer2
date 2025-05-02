@@ -94,20 +94,23 @@
         .then(data => {
           const memoList = document.getElementById('memoList');
           memoList.innerHTML = '';
-          (data.memos || []).forEach((memo, idx) => {
+          (data.memos || [])
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))  // 최신순 정렬
+        .forEach((memo, idx) => {
             const div = document.createElement('div');
             div.className = 'memo-item';
             div.innerHTML = `
-              <div>${memo.text}</div>
-              <small>${new Date(memo.timestamp || Date.now()).toLocaleString()}</small>
-              ${!shared ? `
+            <div>${memo.text}</div>
+            <small>${new Date(memo.timestamp || Date.now()).toLocaleString()}</small>
+            ${!shared ? `
                 <div class="memo-actions">
-                  <button onclick="editMemo(${idx})">수정</button>
-                  <button onclick="deleteMemo(${idx})">삭제</button>
+                <button onclick="editMemo(${idx})">수정</button>
+                <button onclick="deleteMemo(${idx})">삭제</button>
                 </div>` : ''}
             `;
             memoList.appendChild(div);
-          });
+        });
+
 
           if (shared) {
             document.getElementById('newMemo').disabled = true;
