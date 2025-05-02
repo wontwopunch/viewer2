@@ -539,6 +539,24 @@ def get_center_of_tissue(slide, filename):
     rgb.save(save_path)
     print(f"✅ 조직 중심 이미지 저장됨: {save_path}")
 
+@app.route('/files/<filename>/toggle-public', methods=['POST'])
+def toggle_file_public(filename):
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': '파일을 찾을 수 없습니다'}), 404
+
+        is_public = public_files.get(filename, False)
+        public_files[filename] = not is_public
+
+        if save_public_files():
+            return jsonify({'message': '상태 변경 성공', 'is_public': public_files[filename]})
+        else:
+            return jsonify({'error': '파일 상태 저장 실패'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/public_data/<filename>')
 def get_public_data(filename):

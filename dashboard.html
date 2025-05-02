@@ -287,14 +287,23 @@
     }
 
     function togglePublic(filename) {
-      fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, { method: 'POST' })
-        .then(res => res.json())
-        .then(() => displayFiles())
-        .catch(err => {
-          alert("공개 상태 변경 중 오류가 발생했습니다.");
-          console.error(err);
-        });
+      fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, {
+        method: 'POST'
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          alert('오류: ' + data.error);
+        } else {
+          displayFiles();  // 상태 갱신
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("공개 상태 변경 중 오류가 발생했습니다.");
+      });
     }
+
 
     function viewFile(filename) {
         const imageUrl = `/debug_images/${filename}_debug_center.jpg`;
