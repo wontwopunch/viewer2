@@ -539,7 +539,7 @@ def get_center_of_tissue(slide, filename):
     rgb.save(save_path)
     print(f"✅ 조직 중심 이미지 저장됨: {save_path}")
 
-@app.route('/files/<filename>/toggle-public', methods=['PUT'])
+@app.route('/files/<filename>/toggle-public', methods=['POST'])
 def toggle_file_public(filename):
     try:
         file_path = os.path.join(UPLOAD_FOLDER, filename)
