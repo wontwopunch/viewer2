@@ -534,13 +534,13 @@ def get_center_of_tissue(slide, filename):
 
 
 
-@app.route('/slide/<filename>/data', methods=['GET'])
-def get_slide_data(filename):
-    try:
-        data = load_file_data(filename)
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@app.route('/public_data/<filename>')
+def get_public_data(filename):
+    if filename not in public_files or not public_files[filename]:
+        return abort(404)
+    return jsonify(load_file_data(filename))
+
+
 
 @app.route('/slide/<filename>/data', methods=['POST'])
 def save_slide_data(filename):
@@ -695,6 +695,26 @@ def serve_debug_image(filename):
         return 'debug_center image not found', 404
 
 
+@app.route('/public_data/<filename>', methods=['GET'])
+def get_public_memo_data(filename):
+    if filename not in public_files or not public_files[filename]:
+        return jsonify({'error': '파일이 공개 상태가 아닙니다'}), 403
+
+    try:
+        data = load_file_data(filename)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/slide/<filename>/data', methods=['GET'])
+def get_slide_data(filename):
+    try:
+        return jsonify(load_file_data(filename))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+        
 
 # Flask 앱 초기화 후에 추가
 if __name__ != '__main__':
