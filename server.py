@@ -1,3 +1,4 @@
+# server.py
 from flask import Flask, send_file, jsonify, request, send_from_directory, make_response, abort
 import openslide
 from flask_cors import CORS
@@ -504,6 +505,12 @@ def get_slide_info(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/slide/<filename>/data', methods=['GET'])
+def get_slide_data(filename):
+    try:
+        return jsonify(load_file_data(filename))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
@@ -533,14 +540,25 @@ def get_center_of_tissue(slide, filename):
     print(f"✅ 조직 중심 이미지 저장됨: {save_path}")
 
 
+@app.route('/public_data/<filename>')
+def get_public_data(filename):
+    if filename not in public_files or not public_files[filename]:
+        return abort(404)
+    return jsonify(load_file_data(filename))
 
-@app.route('/slide/<filename>/data', methods=['GET'])
-def get_slide_data(filename):
+
+@app.route('/public_data/<filename>', methods=['GET'])
+def get_public_memo_data(filename):
+    if filename not in public_files or not public_files[filename]:
+        return jsonify({'error': '파일이 공개 상태가 아닙니다'}), 403
+
     try:
         data = load_file_data(filename)
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/slide/<filename>/data', methods=['POST'])
 def save_slide_data(filename):
