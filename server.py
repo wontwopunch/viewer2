@@ -724,14 +724,15 @@ def server_status():
 
 @app.route('/debug_images/<path:filename>')
 def serve_debug_image(filename):
-    # 공개 링크에서 접근 중인지 확인
     is_shared = request.args.get("shared") == "1"
-    if is_shared:
+    is_admin = request.args.get("auth") == "admin"
+
+    if is_shared and not is_admin:
         if filename.endswith("_debug_center.jpg"):
             original_name = filename.replace("_debug_center.jpg", ".svs")
             if original_name not in public_files or not public_files[original_name]:
-                return abort(403)  # 🔒 비공개일 경우 이미지 접근 금지
-    # 일반 관리자 접근은 허용
+                return abort(403)
+
     path = os.path.join(BASE_DIR, 'debug_images', filename)
     if os.path.exists(path):
         return send_file(path, mimetype='image/jpeg', as_attachment=False)
