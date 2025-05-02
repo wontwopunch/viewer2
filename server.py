@@ -366,7 +366,6 @@ def save_public_files(data=None):
         print(f"Current working directory: {os.getcwd()}")
         return False
 
-
 @app.route('/files')
 def get_files():
     try:
@@ -379,10 +378,13 @@ def get_files():
                     'name': filename,
                     'date': stat.st_mtime,
                     'size': stat.st_size,
+                    'is_public': public_files.get(filename, False)  # ✅ 추가
                 })
         return jsonify(files)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/files/<filename>', methods=['DELETE'])
 def delete_file(filename):
