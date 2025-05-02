@@ -295,7 +295,7 @@
         if (data.error) {
           alert('오류: ' + data.error);
         } else {
-          displayFiles();  // 상태 갱신
+          displayFiles();  // ✅ 다시 파일 리스트를 불러서 상태 반영
         }
       })
       .catch(err => {
@@ -303,6 +303,7 @@
         alert("공개 상태 변경 중 오류가 발생했습니다.");
       });
     }
+
 
 
     function viewFile(filename) {
