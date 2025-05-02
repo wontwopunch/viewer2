@@ -288,7 +288,7 @@
 
     function togglePublic(filename) {
       fetch(`${API_BASE_URL}/files/${filename}/toggle-public`, {
-        method: 'POST'
+        method: 'PUT'
       })
       .then(res => res.json())
       .then(data => {
