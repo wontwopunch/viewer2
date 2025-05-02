@@ -1,4 +1,3 @@
-# server.py
 from flask import Flask, send_file, jsonify, request, send_from_directory, make_response, abort
 import openslide
 from flask_cors import CORS
@@ -366,6 +365,7 @@ def save_public_files(data=None):
         print(f"Current working directory: {os.getcwd()}")
         return False
 
+
 @app.route('/files')
 def get_files():
     try:
@@ -378,13 +378,10 @@ def get_files():
                     'name': filename,
                     'date': stat.st_mtime,
                     'size': stat.st_size,
-                    'is_public': public_files.get(filename, False)  # ✅ 추가
                 })
         return jsonify(files)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 
 @app.route('/files/<filename>', methods=['DELETE'])
 def delete_file(filename):
@@ -507,12 +504,6 @@ def get_slide_info(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/slide/<filename>/data', methods=['GET'])
-def get_slide_data(filename):
-    try:
-        return jsonify(load_file_data(filename))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 
 
@@ -541,44 +532,15 @@ def get_center_of_tissue(slide, filename):
     rgb.save(save_path)
     print(f"✅ 조직 중심 이미지 저장됨: {save_path}")
 
-@app.route('/files/<filename>/toggle-public', methods=['POST'])
-def toggle_file_public(filename):
-    try:
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        if not os.path.exists(file_path):
-            return jsonify({'error': '파일을 찾을 수 없습니다'}), 404
-
-        is_public = public_files.get(filename, False)
-        public_files[filename] = not is_public
-
-        if save_public_files():
-            return jsonify({'message': '상태 변경 성공', 'is_public': public_files[filename]})
-        else:
-            return jsonify({'error': '파일 상태 저장 실패'}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 
-
-@app.route('/public_data/<filename>')
-def get_public_data(filename):
-    if filename not in public_files or not public_files[filename]:
-        return abort(404)
-    return jsonify(load_file_data(filename))
-
-
-@app.route('/public_data/<filename>', methods=['GET'])
-def get_public_memo_data(filename):
-    if filename not in public_files or not public_files[filename]:
-        return jsonify({'error': '파일이 공개 상태가 아닙니다'}), 403
-
+@app.route('/slide/<filename>/data', methods=['GET'])
+def get_slide_data(filename):
     try:
         data = load_file_data(filename)
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 
 @app.route('/slide/<filename>/data', methods=['POST'])
 def save_slide_data(filename):
@@ -724,16 +686,9 @@ def server_status():
 
 @app.route('/debug_images/<path:filename>')
 def serve_debug_image(filename):
-    is_shared = request.args.get("shared") == "1"
-    is_admin = request.args.get("auth") == "admin"
+    debug_dir = os.path.join(BASE_DIR, 'debug_images')
+    path = os.path.join(debug_dir, filename)
 
-    if is_shared and not is_admin:
-        if filename.endswith("_debug_center.jpg"):
-            original_name = filename.replace("_debug_center.jpg", ".svs")
-            if original_name not in public_files or not public_files[original_name]:
-                return abort(403)
-
-    path = os.path.join(BASE_DIR, 'debug_images', filename)
     if os.path.exists(path):
         return send_file(path, mimetype='image/jpeg', as_attachment=False)
     else:
