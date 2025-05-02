@@ -741,7 +741,6 @@ def serve_debug_image(filename):
 
 
 
-
 # Flask 앱 초기화 후에 추가
 if __name__ != '__main__':
     # 로그 파일 설정
