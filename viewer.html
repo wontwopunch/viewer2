@@ -53,28 +53,33 @@
     let filename, shared = false;
 
     document.addEventListener('DOMContentLoaded', () => {
-      const params = new URLSearchParams(window.location.search);
-      const imagePath = params.get('image');
-      shared = params.get('shared') === '1';
+    const params = new URLSearchParams(window.location.search);
+    const imagePath = params.get('image');
+    shared = params.get('shared') === '1';
 
-      if (!imagePath) {
+    if (!imagePath) {
         const fallback = params.get('file');
         if (fallback) {
-          window.location.href = `viewer.html?image=/debug_images/${fallback}_debug_center.jpg`;
+        window.location.href = `viewer.html?image=/debug_images/${fallback}_debug_center.jpg`;
         } else {
-          alert("이미지 경로가 지정되지 않았습니다.");
-          window.location.href = '/dashboard.html';
+        alert("이미지 경로가 지정되지 않았습니다.");
+        window.location.href = '/dashboard.html';
         }
         return;
-      }
+    }
 
-      const decoded = decodeURIComponent(imagePath);
-      filename = decoded.split('/').pop().replace('_debug_center.jpg', '');
-      document.getElementById('fileName').textContent = filename;
+    const decodedPath = decodeURIComponent(imagePath);
+    filename = decodedPath.split('/').pop().replace('_debug_center.jpg', '');
+    document.getElementById('fileName').textContent = filename;
 
-      initViewer(`${API_BASE_URL}${decoded}`);
-      loadMemos();
+    // ✅ 여기!
+    const sharedParam = shared ? '?shared=1' : '';
+    const fullImageUrl = `${API_BASE_URL}${decodedPath}${sharedParam}`;
+
+    initViewer(fullImageUrl);
+    loadMemos();
     });
+
 
     function initViewer(url) {
       document.getElementById('loadingOverlay').style.display = 'none';
@@ -88,7 +93,7 @@
     }
 
     function loadMemos() {
-      const endpoint = shared ? `/public_data/${filename}` : `/slide/${filename}/data`;
+        const endpoint = shared ? `/public_data/${filename}` : `/slide/${filename}/data`;
       fetch(`${API_BASE_URL}${endpoint}`)
         .then(res => res.json())
         .then(data => {
